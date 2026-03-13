@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+*.egg-info/
+dist/
+build/
+*.app/
+*.dmg
+desktop.sh
+ascii-art/scripts/.venv/
+ascii-art/.git/

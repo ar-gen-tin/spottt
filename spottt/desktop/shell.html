@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Spottt — Discman</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:transparent;display:flex;justify-content:center;align-items:flex-start;
+  min-height:100vh;-webkit-app-region:drag;overflow:hidden}
+button{-webkit-app-region:no-drag}
+
+/* Outer wrapper scales everything uniformly */
+.scale-wrap{
+  transform:scale(0.7);
+  transform-origin:top center;
+  margin-top:0;
+}
+
+.container{position:relative;width:420px;height:460px}
+.device-svg{position:absolute;top:0;left:0;width:100%;height:100%}
+
+/* LCD overlay — matches SVG screen at ORIGINAL scale (scaling handled by wrapper) */
+.lcd-layer{
+  position:absolute;
+  top:80px;left:42px;
+  width:336px;height:250px;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+  padding:8px 10px 6px;
+  z-index:5;
+  font-family:'Courier New',monospace;
+}
+
+.lcd-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.lcd-track-num{font-size:18px;font-weight:bold;color:#ff9c20;text-shadow:0 0 8px rgba(255,156,32,0.4)}
+.lcd-time{font-size:13px;color:#c87000}
+.lcd-indicators{font-size:7px;color:#c87000;opacity:0.5;letter-spacing:1px}
+
+.lcd-track{font-size:11px;color:#e08800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  text-shadow:0 0 4px rgba(224,136,0,0.3)}
+.lcd-artist{font-size:9px;color:#8a5500;margin-bottom:4px}
+
+.lcd-art{
+  flex:1;
+  display:block;
+  font-family:'Menlo','Courier New',monospace;
+  font-size:4.8px;line-height:1.12;
+  color:#d08000;
+  white-space:pre;letter-spacing:0px;
+  overflow:hidden;
+  text-align:center;
+  padding-top:2px;
+}
+.lcd-art span{white-space:pre}
+/* beat pulse disabled */
+
+.lcd-progress{margin-top:4px}
+.lcd-bar{height:2px;background:rgba(200,112,0,0.12);border-radius:1px}
+.lcd-bar-fill{height:100%;width:0%;background:#c87000;border-radius:1px;transition:width 0.5s linear;
+  box-shadow:0 0 4px rgba(200,112,0,0.3)}
+.lcd-times{display:flex;justify-content:space-between;font-size:8px;color:#8a5500;margin-top:2px}
+
+@keyframes meterPulse{0%,100%{opacity:0.3}50%{opacity:0.9}}
+.meter-bar{animation:meterPulse 0.8s ease-in-out infinite}
+
+.idle{font-size:14px;color:#c87000;text-align:center;opacity:0.3;
+  animation:ib 2.5s ease-in-out infinite}
+@keyframes ib{0%,100%{opacity:0.3}50%{opacity:0.1}}
+
+.btn-hit{position:absolute;z-index:10;opacity:0;cursor:pointer;border:none;background:none}
+</style>
+</head><body>
+
+<div class="scale-wrap">
+<div class="container">
+<svg class="device-svg" viewBox="0 0 420 460" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <filter id="pTex"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" seed="2"/>
+    <feColorMatrix type="saturate" values="0"/><feBlend in="SourceGraphic" mode="multiply"/>
+    <feComposite in2="SourceGraphic" operator="in"/></filter>
+  <filter id="drop"><feDropShadow dx="0" dy="6" stdDeviation="12" flood-opacity="0.6"/></filter>
+  <filter id="inset"><feFlood flood-color="#000" flood-opacity="0.65"/>
+    <feComposite in2="SourceGraphic" operator="out"/><feGaussianBlur stdDeviation="4"/>
+    <feComposite in2="SourceGraphic" operator="atop"/></filter>
+  <filter id="shIn"><feFlood flood-color="#000" flood-opacity="0.3"/>
+    <feComposite in2="SourceGraphic" operator="out"/><feGaussianBlur stdDeviation="1.2"/>
+    <feComposite in2="SourceGraphic" operator="atop"/></filter>
+  <filter id="btnB"><feDropShadow dx="0" dy="1.2" stdDeviation="0.6" flood-opacity="0.5"/></filter>
+  <filter id="glow"><feGaussianBlur stdDeviation="2" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <linearGradient id="bG" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#282828"/><stop offset="3%" stop-color="#1c1c1c"/>
+    <stop offset="50%" stop-color="#141414"/><stop offset="97%" stop-color="#181818"/>
+    <stop offset="100%" stop-color="#101010"/></linearGradient>
+  <linearGradient id="eL" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="rgba(255,255,255,0.12)"/>
+    <stop offset="3%" stop-color="rgba(255,255,255,0.02)"/>
+    <stop offset="97%" stop-color="rgba(0,0,0,0.02)"/>
+    <stop offset="100%" stop-color="rgba(0,0,0,0.1)"/></linearGradient>
+  <linearGradient id="amBg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#1a0e00"/><stop offset="100%" stop-color="#0d0700"/></linearGradient>
+  <radialGradient id="scr" cx=".4" cy=".4" r=".6">
+    <stop offset="0%" stop-color="#555"/><stop offset="40%" stop-color="#333"/>
+    <stop offset="100%" stop-color="#111"/></radialGradient>
+  <linearGradient id="chr" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#888"/><stop offset="30%" stop-color="#ccc"/>
+    <stop offset="50%" stop-color="#666"/><stop offset="80%" stop-color="#999"/>
+    <stop offset="100%" stop-color="#555"/></linearGradient>
+  <radialGradient id="gJack" cx=".5" cy=".4">
+    <stop offset="0%" stop-color="#5b5"/><stop offset="60%" stop-color="#292"/>
+    <stop offset="100%" stop-color="#161"/></radialGradient>
+  <linearGradient id="tBtn" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#222"/><stop offset="100%" stop-color="#141414"/></linearGradient>
+  <linearGradient id="knob" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#ddd"/><stop offset="15%" stop-color="#bbb"/>
+    <stop offset="50%" stop-color="#999"/><stop offset="85%" stop-color="#bbb"/>
+    <stop offset="100%" stop-color="#ccc"/></linearGradient>
+</defs>
+
+<!-- BODY -->
+<rect x="14" y="14" width="392" height="440" rx="10" fill="url(#bG)" filter="url(#drop)"/>
+<rect x="14" y="14" width="392" height="440" rx="10" fill="url(#bG)" filter="url(#pTex)"/>
+<rect x="14" y="14" width="392" height="440" rx="10" fill="url(#eL)"/>
+<rect x="14" y="14" width="392" height="440" rx="10" fill="none" stroke="#0a0a0a" stroke-width="1"/>
+<line x1="24" y1="15" x2="396" y2="15" stroke="#333" stroke-width="0.4"/>
+<line x1="20" y1="32" x2="400" y2="32" stroke="#0c0c0c" stroke-width="0.5"/>
+<line x1="20" y1="32.5" x2="400" y2="32.5" stroke="#252525" stroke-width="0.3"/>
+
+<!-- Screws -->
+<circle cx="28" cy="28" r="3.5" fill="url(#scr)" stroke="#080808" stroke-width="0.4"/>
+<line x1="26" y1="28" x2="30" y2="28" stroke="#444" stroke-width="0.4"/>
+<circle cx="392" cy="28" r="3.5" fill="url(#scr)" stroke="#080808" stroke-width="0.4"/>
+<line x1="390" y1="28" x2="394" y2="28" stroke="#444" stroke-width="0.4"/>
+<circle cx="28" cy="440" r="3.5" fill="url(#scr)" stroke="#080808" stroke-width="0.4"/>
+<line x1="26" y1="492" x2="30" y2="492" stroke="#444" stroke-width="0.4"/>
+<circle cx="392" cy="440" r="3.5" fill="url(#scr)" stroke="#080808" stroke-width="0.4"/>
+<line x1="390" y1="492" x2="394" y2="492" stroke="#444" stroke-width="0.4"/>
+
+<!-- BRANDING -->
+<text x="32" y="53" font-family="Georgia,'Times New Roman',serif" font-size="19" font-weight="700" font-style="italic" fill="#222" letter-spacing="2">Spottt</text>
+<text x="32" y="52.5" font-family="Georgia,'Times New Roman',serif" font-size="19" font-weight="700" font-style="italic" fill="#666" letter-spacing="2">Spottt</text>
+<text x="32" y="52" font-family="Georgia,'Times New Roman',serif" font-size="19" font-weight="700" font-style="italic" fill="#999" letter-spacing="2" style="filter:drop-shadow(0 -0.5px 0 rgba(255,255,255,0.08))">Spottt</text>
+<text x="120" y="48" font-family="Helvetica Neue,sans-serif" font-size="3.5" font-weight="300" fill="#3a3a3a" letter-spacing="1.5">OPTICAL DIGITAL OUTPUT</text>
+<text x="120" y="53" font-family="Helvetica Neue,sans-serif" font-size="3.5" font-weight="300" fill="#3a3a3a" letter-spacing="1.5">DIGITAL SIGNAL PROCESSING</text>
+<text x="310" y="48" font-family="Helvetica Neue,sans-serif" font-size="3.5" font-weight="300" fill="#444" letter-spacing="0.5">COMPACT DISC</text>
+<text x="310" y="53" font-family="Helvetica Neue,sans-serif" font-size="2.8" font-weight="300" fill="#333" letter-spacing="0.3">DIGITAL AUDIO</text>
+<circle cx="370" cy="48" r="8" fill="none" stroke="#333" stroke-width="0.5"/>
+<circle cx="370" cy="48" r="6" fill="#0a0a0a" stroke="#222" stroke-width="0.3"/>
+<circle cx="370" cy="48" r="2" fill="#1a1a1a"/>
+
+<!-- PEAK METER -->
+<rect x="36" y="62" width="348" height="10" rx="1.5" fill="#0a0800" stroke="#1a1200" stroke-width="0.5"/>
+<text x="40" y="70" font-family="Helvetica Neue,sans-serif" font-size="3" fill="#8a5500">PEAK LEVEL</text>
+<g class="meter-bar"><rect x="80" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.9"/>
+<rect x="88" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.85"/>
+<rect x="96" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.75"/>
+<rect x="104" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.65"/>
+<rect x="112" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.5"/>
+<rect x="120" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.35"/>
+<rect x="128" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.2"/>
+<rect x="136" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.1"/></g>
+<text x="180" y="70" font-family="Helvetica Neue,sans-serif" font-size="3" fill="#c87000" text-anchor="middle">L          R</text>
+<g class="meter-bar" style="animation-delay:0.15s"><rect x="220" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.9"/>
+<rect x="228" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.8"/>
+<rect x="236" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.7"/>
+<rect x="244" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.55"/>
+<rect x="252" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.4"/>
+<rect x="260" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.25"/>
+<rect x="268" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.12"/></g>
+
+<!-- LCD SCREEN -->
+<rect x="32" y="76" width="356" height="262" rx="3" fill="#0d0700" filter="url(#inset)"/>
+<rect x="36" y="80" width="348" height="254" rx="2" fill="url(#amBg)"/>
+<rect x="36" y="80" width="348" height="254" rx="2" fill="none" stroke="rgba(200,112,0,0.06)" stroke-width="2"/>
+<ellipse cx="170" cy="160" rx="120" ry="70" fill="rgba(200,140,50,0.012)"/>
+<circle cx="388" cy="84" r="2.5" fill="#ff6600" filter="url(#glow)" opacity="0.85">
+  <animate attributeName="opacity" values="0.85;0.4;0.85" dur="2s" repeatCount="indefinite"/>
+</circle>
+
+<!-- CONTROLS — minimal transport only -->
+<line x1="32" y1="348" x2="388" y2="348" stroke="#0c0c0c" stroke-width="0.5"/>
+<line x1="32" y1="348.5" x2="388" y2="348.5" stroke="#252525" stroke-width="0.3"/>
+
+<!-- 3 transport buttons centered -->
+<g filter="url(#btnB)"><rect x="110" y="362" width="56" height="20" rx="2" fill="url(#tBtn)" stroke="#0a0a0a" stroke-width="0.5"/><rect x="110" y="362" width="56" height="6" rx="2" fill="rgba(255,255,255,0.04)"/></g>
+<text x="138" y="375" text-anchor="middle" font-family="Helvetica Neue,sans-serif" font-size="8" fill="#888">|◁◁</text>
+
+<g filter="url(#btnB)"><rect x="174" y="362" width="72" height="20" rx="2" fill="url(#tBtn)" stroke="#0a0a0a" stroke-width="0.5"/><rect x="174" y="362" width="72" height="6" rx="2" fill="rgba(255,255,255,0.04)"/></g>
+<text x="210" y="376" text-anchor="middle" font-family="Helvetica Neue,sans-serif" font-size="9" fill="#999">▶ / ‖</text>
+
+<g filter="url(#btnB)"><rect x="254" y="362" width="56" height="20" rx="2" fill="url(#tBtn)" stroke="#0a0a0a" stroke-width="0.5"/><rect x="254" y="362" width="56" height="6" rx="2" fill="rgba(255,255,255,0.04)"/></g>
+<text x="282" y="375" text-anchor="middle" font-family="Helvetica Neue,sans-serif" font-size="8" fill="#888">▷▷|</text>
+
+<!-- Bottom strip -->
+<line x1="32" y1="394" x2="388" y2="394" stroke="#0c0c0c" stroke-width="0.5"/>
+<line x1="32" y1="394.5" x2="388" y2="394.5" stroke="#222" stroke-width="0.3"/>
+
+<!-- Headphone jack (green ring) -->
+<circle cx="60" cy="414" r="7" fill="#0a0a0a" stroke="url(#chr)" stroke-width="1.2"/>
+<circle cx="60" cy="414" r="5" fill="#060606"/>
+<circle cx="60" cy="414" r="5.8" fill="none" stroke="url(#gJack)" stroke-width="1"/>
+<circle cx="60" cy="414" r="2.5" fill="#040404"/>
+<text x="60" y="428" text-anchor="middle" font-family="Helvetica Neue,sans-serif" font-size="3.5" font-weight="300" fill="#444" letter-spacing="0.5">PHONES</text>
+
+<!-- Speaker grille -->
+<g opacity="0.25">
+  <g id="spRow"><circle cx="0" cy="0" r="0.8" fill="#555"/><circle cx="6" cy="0" r="0.8" fill="#555"/><circle cx="12" cy="0" r="0.8" fill="#555"/><circle cx="18" cy="0" r="0.8" fill="#555"/><circle cx="24" cy="0" r="0.8" fill="#555"/><circle cx="30" cy="0" r="0.8" fill="#555"/><circle cx="36" cy="0" r="0.8" fill="#555"/><circle cx="42" cy="0" r="0.8" fill="#555"/><circle cx="48" cy="0" r="0.8" fill="#555"/><circle cx="54" cy="0" r="0.8" fill="#555"/></g>
+  <use href="#spRow" transform="translate(270,406)"/><use href="#spRow" transform="translate(270,412)"/>
+  <use href="#spRow" transform="translate(270,418)"/><use href="#spRow" transform="translate(270,424)"/>
+</g>
+
+<!-- Power LED -->
+<circle cx="388" cy="410" r="2" fill="#ff6600" filter="url(#glow)" opacity="0.75"/>
+<text x="388" y="420" text-anchor="middle" font-family="Helvetica Neue,sans-serif" font-size="2.5" font-weight="300" fill="#555">PWR</text>
+
+<!-- Model -->
+<text x="210" y="444" text-anchor="middle" font-family="Helvetica Neue,sans-serif" font-size="3.5" font-weight="300" fill="#333" letter-spacing="1.5">D-SP555</text>
+</svg>
+
+<!-- LCD CONTENT -->
+<div class="lcd-layer">
+  <div class="lcd-head">
+    <div>
+      <span class="lcd-track-num" id="trackNum">01</span>
+      <span class="lcd-time" id="lcdTime">--:--</span>
+      <span class="lcd-indicators">AMS</span>
+    </div>
+    <div class="lcd-indicators" id="modeIndicators"></div>
+  </div>
+  <div class="lcd-track" id="trackName"></div>
+  <div class="lcd-artist" id="trackArtist"></div>
+  <div class="lcd-art" id="artDisplay"><div class="idle">INSERT DISC</div></div>
+  <div class="lcd-progress">
+    <div class="lcd-bar"><div class="lcd-bar-fill" id="progressFill"></div></div>
+    <div class="lcd-times"><span id="timePos">00:00</span><span>STEP/MIN SEC</span><span id="timeDur">00:00</span></div>
+  </div>
+</div>
+
+<!-- Button hit areas -->
+<button class="btn-hit" style="top:362px;left:174px;width:72px;height:20px" id="btnPlay"></button>
+<button class="btn-hit" style="top:362px;left:110px;width:56px;height:20px" id="btnPrev"></button>
+<button class="btn-hit" style="top:362px;left:254px;width:56px;height:20px" id="btnNext"></button>
+</div>
+</div>
+
+<script>
+const API='http://127.0.0.1:18899';
+let curId=null,beatTimer=null;
+const $=id=>document.getElementById(id);
+function fmt(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60);return`${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
+
+async function poll(){
+  try{
+    const r=await fetch(API+'/state');if(!r.ok)return;const d=await r.json();
+    if(!d.track_id){
+      $('trackName').textContent='';$('trackArtist').textContent='';
+      $('trackNum').textContent='--';$('lcdTime').textContent='--:--';
+      $('progressFill').style.width='0%';$('timePos').textContent='00:00';$('timeDur').textContent='00:00';
+      $('artDisplay').innerHTML='<div class="idle">INSERT DISC</div>';return;
+    }
+    $('trackName').textContent=d.name||'';$('trackArtist').textContent=d.artist||'';
+    $('trackNum').textContent='01';
+    $('lcdTime').textContent=fmt(d.progress_ms);
+    $('progressFill').style.width=(d.duration_ms>0?(d.progress_ms/d.duration_ms)*100:0)+'%';
+    $('timePos').textContent=fmt(d.progress_ms);$('timeDur').textContent=fmt(d.duration_ms);
+    $('modeIndicators').textContent=d.is_playing?'▶ PLAY':'⏸ PAUSE';
+    if(d.track_id!==curId){curId=d.track_id;fetchArt();
+}
+  }catch(e){}}
+
+async function fetchArt(){try{const r=await fetch(API+'/art');if(!r.ok)return;
+  const d=await r.json();if(d.html)$('artDisplay').innerHTML=d.html}catch(e){}}
+
+$('btnStyle')?.addEventListener('click',async()=>{try{await fetch(API+'/action/next_style',{method:'POST'});curId=null}catch(e){}});
+$('btnPlay')?.addEventListener('click',async()=>{try{await fetch(API+'/action/play_pause',{method:'POST'})}catch(e){}});
+$('btnPrev')?.addEventListener('click',async()=>{try{await fetch(API+'/action/prev_track',{method:'POST'})}catch(e){}});
+$('btnNext')?.addEventListener('click',async()=>{try{await fetch(API+'/action/next_track',{method:'POST'})}catch(e){}});
+
+setInterval(poll,1000);poll();
+</script>
+</body></html>
