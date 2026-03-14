@@ -268,7 +268,6 @@ async function poll(){
 async function fetchArt(){try{const r=await fetch(API+'/art');if(!r.ok)return;
   const d=await r.json();if(d.html)$('artDisplay').innerHTML=d.html}catch(e){}}
 
-$('btnStyle')?.addEventListener('click',async()=>{try{await fetch(API+'/action/next_style',{method:'POST'});curId=null}catch(e){}});
 $('btnPlay')?.addEventListener('click',async()=>{try{await fetch(API+'/action/play_pause',{method:'POST'})}catch(e){}});
 $('btnPrev')?.addEventListener('click',async()=>{try{await fetch(API+'/action/prev_track',{method:'POST'})}catch(e){}});
 $('btnNext')?.addEventListener('click',async()=>{try{await fetch(API+'/action/next_track',{method:'POST'})}catch(e){}});

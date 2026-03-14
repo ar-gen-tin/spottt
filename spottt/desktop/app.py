@@ -73,7 +73,6 @@ class SpotifyPoller:
         self.current_image_bytes = None
         self.current_frame = None
         self.bpm = 120.0
-        self._last_track_id = None
 
     def run(self):
         """Main poll loop — runs in a background thread."""
@@ -103,15 +102,13 @@ class SpotifyPoller:
 
         # New track — fetch art
         if self.client.track_changed(track):
+            # Update metadata immediately before downloading art
+            state.update_from_track(track, state.get_art_html(), self.bpm, self.renderer.current_style)
             self._fetch_art(track)
             self._fetch_bpm(track)
 
         # Update progress in state
         art_html = state.get_art_html()  # keep existing art
-        if self.current_frame:
-            # Re-render is not needed every poll, art_html persists
-            pass
-
         state.update_from_track(track, art_html, self.bpm, self.renderer.current_style)
 
     def _fetch_art(self, track):
@@ -250,8 +247,10 @@ def _load_client_id() -> str:
 
     # Save for next time
     os.makedirs(CONFIG_DIR, exist_ok=True)
+    os.chmod(CONFIG_DIR, 0o700)
     with open(CONFIG_FILE, "w") as f:
         json.dump({"client_id": cid}, f, indent=2)
+    os.chmod(CONFIG_FILE, 0o600)
 
     return cid
 

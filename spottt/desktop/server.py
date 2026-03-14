@@ -4,9 +4,11 @@ import html
 import json
 import threading
 import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 PORT = 18899
+
+ALLOWED_ACTIONS = {"play_pause", "next_track", "prev_track", "next_style", "prev_style"}
 
 
 class SpotttState:
@@ -91,6 +93,9 @@ class APIHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path.startswith("/action/"):
             action = self.path.split("/action/")[1]
+            if action not in ALLOWED_ACTIONS:
+                self.send_error(400, "Invalid action")
+                return
             if _action_callback:
                 _action_callback(action)
             self._json_response({"ok": True})
@@ -101,14 +106,14 @@ class APIHandler(BaseHTTPRequestHandler):
         body = json.dumps(data).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", "null")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", "null")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
 
@@ -118,7 +123,7 @@ class APIHandler(BaseHTTPRequestHandler):
 
 def start_server():
     """Start the API server in a background thread."""
-    server = HTTPServer(("127.0.0.1", PORT), APIHandler)
+    server = ThreadingHTTPServer(("127.0.0.1", PORT), APIHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server

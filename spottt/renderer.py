@@ -66,6 +66,7 @@ class ArtFrame:
     """Raw art data: char grid + RGB colors. Used for per-frame pulse."""
     chars: list          # list[list[str]]
     colors: np.ndarray   # (rows, cols, 3) uint8 RGB
+    key: tuple = None    # (track_id, style, cols) — content-based cache key
 
 
 class AsciiRenderer:
@@ -119,22 +120,15 @@ class AsciiRenderer:
             img = bg
 
         chars, colors = self._convert(img, self.current_style, cols)
-        frame = ArtFrame(chars=chars, colors=colors)
+        frame = ArtFrame(chars=chars, colors=colors, key=cache_key)
 
         if track_id:
+            if len(self._frame_cache) > 10:
+                oldest = next(iter(self._frame_cache))
+                del self._frame_cache[oldest]
             self._frame_cache[cache_key] = frame
 
         return frame
-
-    def render(
-        self,
-        image_bytes: bytes,
-        cols: int = 60,
-        track_id: str = None,
-    ) -> str:
-        """Render image to ANSI string (no pulse). For backwards compat."""
-        frame = self.render_frame(image_bytes, cols, track_id)
-        return self._to_ansi(frame.chars, frame.colors, 1.0)
 
     def render_with_pulse(self, frame: ArtFrame, pulse: float = 1.0) -> str:
         """Render ArtFrame to ANSI string with brightness pulse (0.3–1.5).
@@ -145,8 +139,8 @@ class AsciiRenderer:
         level = round(pulse * 10) / 10
         level = max(0.3, min(1.5, level))
 
-        # Use id of frame object + level as cache key
-        cache_key = (id(frame), level)
+        # Use content-based key for stable caching
+        cache_key = (frame.key, level)
         if cache_key in self._ansi_cache:
             return self._ansi_cache[cache_key]
 

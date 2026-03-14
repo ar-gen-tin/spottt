@@ -47,12 +47,9 @@ class SpotttApp:
         self.current_art = None       # ANSI string (regenerated each frame with pulse)
         self.current_frame = None     # ArtFrame (raw chars+colors, cached per track)
         self.current_image_bytes = None
-        self.image_source = "album"  # "album" or "artist"
         self.running = True
         self.poll_interval = 3.0
         self.last_poll = 0.0
-        self.color_mode_index = 0
-        self.color_modes = ["original", "grayscale", "matrix", "amber"]
 
         if style:
             self.renderer.set_style(style)
@@ -136,12 +133,6 @@ class SpotttApp:
         elif ch == "S":
             self.renderer.prev_style()
             self._re_render_art()
-        elif ch == "c":
-            self.color_mode_index = (self.color_mode_index + 1) % len(
-                self.color_modes
-            )
-            self.renderer.clear_cache()
-            self._re_render_art()
         elif ch == "+":
             if self.user_cols == 0:
                 self.user_cols = self._art_cols()
@@ -219,11 +210,9 @@ class SpotttApp:
         cols = self._art_cols()
 
         cover_url = track.best_cover_url
-        self.image_source = "album"
 
         if not cover_url and track.artist_ids:
             cover_url = self.client.get_artist_image_url(track.artist_ids[0])
-            self.image_source = "artist"
 
         if not cover_url:
             self.current_art = None

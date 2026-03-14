@@ -38,12 +38,14 @@ class SpotifyAuth:
 
     def _save_tokens(self):
         os.makedirs(TOKEN_DIR, exist_ok=True)
+        os.chmod(TOKEN_DIR, 0o700)
         with open(TOKEN_FILE, "w") as f:
             json.dump({
                 "access_token": self.access_token,
                 "refresh_token": self.refresh_token,
                 "expires_at": self.expires_at,
             }, f, indent=2)
+        os.chmod(TOKEN_FILE, 0o600)
 
     def get_token(self) -> str:
         if self.access_token and time.time() < self.expires_at - 60:
@@ -85,6 +87,12 @@ class SpotifyAuth:
             def do_GET(self):
                 query = urllib.parse.urlparse(self.path).query
                 params = urllib.parse.parse_qs(query)
+                returned_state = params.get("state", [None])[0]
+                if returned_state != state:
+                    self.send_response(400)
+                    self.end_headers()
+                    self.wfile.write(b"State mismatch - possible CSRF attack")
+                    return
                 if "code" in params:
                     code_result[0] = params["code"][0]
                     self.send_response(200)
@@ -119,49 +127,36 @@ class SpotifyAuth:
         server.server_close()
         self._exchange_code(code_result[0], verifier)
 
+    def _token_request(self, data: dict):
+        """POST to token endpoint, parse response, save tokens."""
+        body = urllib.parse.urlencode(data).encode()
+        req = urllib.request.Request(
+            "https://accounts.spotify.com/api/token",
+            data=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            result = json.loads(resp.read())
+        self.access_token = result["access_token"]
+        self.refresh_token = result.get("refresh_token", self.refresh_token)
+        self.expires_at = time.time() + result["expires_in"]
+        self._save_tokens()
+
     def _exchange_code(self, code: str, verifier: str):
-        data = urllib.parse.urlencode({
+        self._token_request({
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": REDIRECT_URI,
             "client_id": self.client_id,
             "code_verifier": verifier,
-        }).encode()
-
-        req = urllib.request.Request(
-            "https://accounts.spotify.com/api/token",
-            data=data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
-
-        with urllib.request.urlopen(req) as resp:
-            result = json.loads(resp.read())
-
-        self.access_token = result["access_token"]
-        self.refresh_token = result.get("refresh_token", self.refresh_token)
-        self.expires_at = time.time() + result["expires_in"]
-        self._save_tokens()
+        })
 
     def _refresh(self):
-        data = urllib.parse.urlencode({
+        self._token_request({
             "grant_type": "refresh_token",
             "refresh_token": self.refresh_token,
             "client_id": self.client_id,
-        }).encode()
-
-        req = urllib.request.Request(
-            "https://accounts.spotify.com/api/token",
-            data=data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
-
-        with urllib.request.urlopen(req) as resp:
-            result = json.loads(resp.read())
-
-        self.access_token = result["access_token"]
-        self.refresh_token = result.get("refresh_token", self.refresh_token)
-        self.expires_at = time.time() + result["expires_in"]
-        self._save_tokens()
+        })
 
     def logout(self):
         self.access_token = None

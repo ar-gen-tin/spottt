@@ -15,7 +15,6 @@ class TrackInfo:
     name: str
     artists: list
     album: str
-    album_id: str
     album_images: list  # [{url, height, width}]
     artist_ids: list
     duration_ms: int
@@ -26,12 +25,6 @@ class TrackInfo:
     @property
     def artist_display(self) -> str:
         return ", ".join(self.artists)
-
-    @property
-    def progress_ratio(self) -> float:
-        if self.duration_ms <= 0:
-            return 0.0
-        return min(1.0, self.progress_ms / self.duration_ms)
 
     def interpolated_progress_ms(self) -> int:
         """Estimate current progress by adding elapsed time since last poll."""
@@ -50,16 +43,6 @@ class TrackInfo:
         )
         return sorted_imgs[0]["url"]
 
-    @property
-    def small_cover_url(self) -> Optional[str]:
-        if not self.album_images:
-            return None
-        sorted_imgs = sorted(
-            self.album_images,
-            key=lambda x: x.get("height") or 640,
-        )
-        return sorted_imgs[0]["url"]
-
 
 class SpotifyClient:
     API_BASE = "https://api.spotify.com/v1"
@@ -69,7 +52,7 @@ class SpotifyClient:
         self._last_track_id = None
         self._artist_image_cache = {}
 
-    def _api_get(self, path: str, params: dict = None):
+    def _api_get(self, path: str, params: dict = None, _retries: int = 0):
         token = self.auth.get_token()
         url = f"{self.API_BASE}{path}"
         if params:
@@ -86,13 +69,15 @@ class SpotifyClient:
                     return None
                 return json.loads(resp.read())
         except urllib.error.HTTPError as e:
+            if _retries >= 2:
+                return None
             if e.code == 429:
                 retry_after = int(e.headers.get("Retry-After", 5))
                 time.sleep(retry_after)
-                return self._api_get(path, params)
+                return self._api_get(path, params, _retries + 1)
             if e.code == 401:
                 self.auth.access_token = None
-                return self._api_get(path, params)
+                return self._api_get(path, params, _retries + 1)
             raise
 
     def get_currently_playing(self) -> Optional[TrackInfo]:
@@ -108,7 +93,6 @@ class SpotifyClient:
             name=item["name"],
             artists=[a["name"] for a in item.get("artists", [])],
             album=item.get("album", {}).get("name", ""),
-            album_id=item.get("album", {}).get("id", ""),
             album_images=item.get("album", {}).get("images", []),
             artist_ids=[a["id"] for a in item.get("artists", [])],
             duration_ms=item.get("duration_ms", 0),
@@ -152,12 +136,12 @@ class SpotifyClient:
 
     # ── Playback controls ────────────────────────────────────────
 
-    def _api_put(self, path: str, body: dict = None):
+    def _api_request(self, method: str, path: str, body: dict = None, _retries: int = 0):
         token = self.auth.get_token()
         url = f"{self.API_BASE}{path}"
         data = json.dumps(body).encode() if body else b""
         req = urllib.request.Request(
-            url, data=data, method="PUT",
+            url, data=data, method=method,
             headers={
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
@@ -167,42 +151,24 @@ class SpotifyClient:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 return resp.status
         except urllib.error.HTTPError as e:
+            if _retries >= 2:
+                return e.code
             if e.code == 401:
                 self.auth.access_token = None
-                return self._api_put(path, body)
-            return e.code
-
-    def _api_post(self, path: str, body: dict = None):
-        token = self.auth.get_token()
-        url = f"{self.API_BASE}{path}"
-        data = json.dumps(body).encode() if body else b""
-        req = urllib.request.Request(
-            url, data=data, method="POST",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-            },
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                return resp.status
-        except urllib.error.HTTPError as e:
-            if e.code == 401:
-                self.auth.access_token = None
-                return self._api_post(path, body)
+                return self._api_request(method, path, body, _retries + 1)
             return e.code
 
     def play(self):
-        return self._api_put("/me/player/play")
+        return self._api_request("PUT", "/me/player/play")
 
     def pause(self):
-        return self._api_put("/me/player/pause")
+        return self._api_request("PUT", "/me/player/pause")
 
     def next_track(self):
-        return self._api_post("/me/player/next")
+        return self._api_request("POST", "/me/player/next")
 
     def previous_track(self):
-        return self._api_post("/me/player/previous")
+        return self._api_request("POST", "/me/player/previous")
 
     def download_image(self, url: str) -> bytes:
         req = urllib.request.Request(url)
