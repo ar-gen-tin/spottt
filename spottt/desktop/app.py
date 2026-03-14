@@ -189,17 +189,77 @@ class SpotifyPoller:
                 pass
 
 
+CONFIG_DIR = os.path.expanduser("~/.config/spottt")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
+
+
+def _load_client_id() -> str:
+    """Load client ID from env, config file, or prompt user."""
+    import json
+
+    # 1. Environment variable
+    cid = os.environ.get("SPOTIFY_CLIENT_ID") or os.environ.get("SPOTIPY_CLIENT_ID")
+    if cid:
+        return cid
+
+    # 2. Config file
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE) as f:
+                data = json.load(f)
+            cid = data.get("client_id")
+            if cid:
+                return cid
+        except Exception:
+            pass
+
+    # 3. GUI prompt via webview
+    import webview
+
+    result = [None]
+
+    def _on_shown(window):
+        val = window.create_file_dialog
+        # Use JS prompt via evaluate_js
+        js = (
+            'prompt('
+            '"Enter your Spotify Client ID\\n\\n'
+            'Get one at developer.spotify.com/dashboard\\n'
+            'Set redirect URI to http://127.0.0.1:8888/callback",'
+            '"")'
+        )
+        val = window.evaluate_js(js)
+        if val and val.strip():
+            result[0] = val.strip()
+        window.destroy()
+
+    w = webview.create_window(
+        "Spottt — Setup",
+        html="<html><body style='background:#141414;color:#c87000;font-family:monospace;"
+             "display:flex;align-items:center;justify-content:center;height:100vh'>"
+             "<p>Enter Spotify Client ID...</p></body></html>",
+        width=400, height=150,
+    )
+    w.events.shown += _on_shown
+    webview.start()
+
+    cid = result[0]
+    if not cid:
+        print("No Client ID provided. Exiting.")
+        sys.exit(1)
+
+    # Save for next time
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(CONFIG_FILE, "w") as f:
+        json.dump({"client_id": cid}, f, indent=2)
+
+    return cid
+
+
 def main(client_id: str = None):
     import webview
 
-    client_id = (
-        client_id
-        or os.environ.get("SPOTIFY_CLIENT_ID")
-        or os.environ.get("SPOTIPY_CLIENT_ID")
-    )
-    if not client_id:
-        print("Error: Set SPOTIFY_CLIENT_ID environment variable")
-        sys.exit(1)
+    client_id = client_id or _load_client_id()
 
     # Start API server
     start_server()

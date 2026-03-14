@@ -4,6 +4,8 @@ A retro Sony Discman-style desktop widget that displays your currently playing S
 
 Built with SVG hardware rendering, real-time Spotify sync, and the [ascii-art](https://github.com/neethanwu/ascii-art) conversion engine.
 
+![Spottt Screenshot](screenshot.png)
+
 ## Features
 
 - **ASCII album covers** — converts album art to colored ASCII in real-time using 7 styles (braille, block, classic, edge, particles, retro-art, terminal)
