@@ -162,6 +162,34 @@ class SpotifyPoller:
                 pass
             return
 
+        elif action == "quit":
+            import webview
+            for w in webview.windows:
+                w.destroy()
+            return
+        elif action == "minimize":
+            import webview
+            for w in webview.windows:
+                w.minimize()
+            return
+        elif action == "fullscreen":
+            import webview
+            for w in webview.windows:
+                w.toggle_fullscreen()
+            return
+        elif action == "shuffle":
+            try:
+                self.client.shuffle()
+            except Exception:
+                pass
+            return
+        elif action == "repeat":
+            try:
+                self.client.set_repeat("context")
+            except Exception:
+                pass
+            return
+
         # Style controls
         if action == "next_style":
             self.renderer.next_style()
@@ -275,12 +303,12 @@ def main(client_id: str = None):
     window = webview.create_window(
         "Spottt",
         url=f"file://{html_path}",
-        width=310,
+        width=840,
         height=340,
-        resizable=False,
+        resizable=True,
         frameless=True,
         transparent=True,
-        on_top=True,
+        on_top=False,
     )
 
     webview.start(debug=False)

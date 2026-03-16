@@ -8,7 +8,7 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 PORT = 18899
 
-ALLOWED_ACTIONS = {"play_pause", "next_track", "prev_track", "next_style", "prev_style"}
+ALLOWED_ACTIONS = {"play_pause", "next_track", "prev_track", "next_style", "prev_style", "quit", "minimize", "fullscreen", "shuffle", "repeat"}
 
 
 class SpotttState:
@@ -106,14 +106,14 @@ class APIHandler(BaseHTTPRequestHandler):
         body = json.dumps(data).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "null")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "null")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
 

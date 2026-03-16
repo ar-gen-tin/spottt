@@ -1,277 +1,371 @@
 <!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Spottt — Discman</title>
+<html><head><meta charset="UTF-8"><title>Spottt</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:transparent;display:flex;justify-content:center;align-items:flex-start;
-  min-height:100vh;-webkit-app-region:drag;overflow:hidden}
-button{-webkit-app-region:no-drag}
+html,body{width:100%;height:100%;background:#d4d4d4;overflow:hidden;user-select:none;-webkit-user-select:none}
+body{display:flex;justify-content:center;align-items:center}
+button,input{cursor:pointer}
 
-/* Outer wrapper scales everything uniformly */
-.scale-wrap{
-  transform:scale(0.7);
-  transform-origin:top center;
-  margin-top:0;
+/* ── Player shell ── */
+.player{
+  width:820px;height:306px;
+  background:linear-gradient(180deg,#e8e8e6,#dcdcda);
+  border-radius:4px;
+  box-shadow:0 0 0 1px rgba(0,0,0,0.08),0 12px 40px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
+  display:flex;flex-direction:column;overflow:hidden;position:relative;
+  transition:all 0.3s ease;
+}
+.player.fullscreen{
+  width:820px;height:306px;border-radius:0;
+  position:fixed;top:50%;left:50%;z-index:999;
+  transform:translate(-50%,-50%);
+  background:#000;
+  box-shadow:none;
 }
 
-.container{position:relative;width:420px;height:460px}
-.device-svg{position:absolute;top:0;left:0;width:100%;height:100%}
-
-/* LCD overlay — matches SVG screen at ORIGINAL scale (scaling handled by wrapper) */
-.lcd-layer{
-  position:absolute;
-  top:80px;left:42px;
-  width:336px;height:250px;
-  overflow:hidden;
-  display:flex;flex-direction:column;
-  padding:8px 10px 6px;
-  z-index:5;
-  font-family:'Courier New',monospace;
+/* ── Top strip ── */
+.top-strip{
+  height:30px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(0,0,0,0.06);flex-shrink:0;transition:opacity 0.3s;
+  -webkit-app-region: drag;
 }
+.fullscreen .top-strip{opacity:0;height:0;overflow:hidden}
 
-.lcd-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
-.lcd-track-num{font-size:18px;font-weight:bold;color:#ff9c20;text-shadow:0 0 8px rgba(255,156,32,0.4)}
-.lcd-time{font-size:13px;color:#c87000}
-.lcd-indicators{font-size:7px;color:#c87000;opacity:0.5;letter-spacing:1px}
+.brand{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;color:#0f0e12;letter-spacing:4px}
+.track-meta{display:flex;gap:16px;align-items:center}
+.track-name{font-family:'Space Mono',monospace;font-size:9px;color:#0f0e12;font-weight:700;
+  max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track-artist{font-family:'Space Mono',monospace;font-size:8px;color:#888}
+.track-time{font-family:'Space Mono',monospace;font-size:10px;color:#0f0e12;font-weight:700;letter-spacing:1px}
 
-.lcd-track{font-size:11px;color:#e08800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  text-shadow:0 0 4px rgba(224,136,0,0.3)}
-.lcd-artist{font-size:9px;color:#8a5500;margin-bottom:4px}
+/* Window dots */
+.win-dots{display:flex;gap:5px;align-items:center;margin-left:10px}
+.win-dot{width:9px;height:9px;border-radius:50%;cursor:pointer;transition:opacity 0.15s;border:none;padding:0}
+.win-dot:hover{opacity:0.7}
+.win-dot.close{background:#ff5f57}
+.win-dot.mini{background:#febc2e}
+.win-dot.full{background:#28c840}
+.win-dot, .track-name, .track-artist { -webkit-app-region: no-drag; }
 
-.lcd-art{
-  flex:1;
-  display:block;
+/* ── OLED display ── */
+.visual-area{
+  flex:1;display:flex;position:relative;overflow:hidden;
+  background:#0a0a0a;margin:6px 8px;border-radius:3px;
+  box-shadow:inset 0 2px 8px rgba(0,0,0,0.5);
+  transition:margin 0.3s,border-radius 0.3s;
+}
+.fullscreen .visual-area{margin:0;border-radius:0}
+
+/* Art panel (left square) */
+.art-panel{
+  width:210px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border-right:1px solid rgba(255,255,255,0.04);
+  position:relative;z-index:2;overflow:hidden;
+  transition:width 0.3s;
+}
+.fullscreen .art-panel{width:40vh}
+.art-content{
   font-family:'Menlo','Courier New',monospace;
-  font-size:4.8px;line-height:1.12;
-  color:#d08000;
-  white-space:pre;letter-spacing:0px;
-  overflow:hidden;
-  text-align:center;
-  padding-top:2px;
+  font-size:4.5px;line-height:1.12;
+  color:rgba(255,255,255,0.8);white-space:pre;text-align:center;
 }
-.lcd-art span{white-space:pre}
-/* beat pulse disabled */
+.fullscreen .art-content{font-size:7px;line-height:1.15}
+.art-layer{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity 0.4s ease;
+  padding:6px;
+}
+.art-layer.hidden{opacity:0}
 
-.lcd-progress{margin-top:4px}
-.lcd-bar{height:2px;background:rgba(200,112,0,0.12);border-radius:1px}
-.lcd-bar-fill{height:100%;width:0%;background:#c87000;border-radius:1px;transition:width 0.5s linear;
-  box-shadow:0 0 4px rgba(200,112,0,0.3)}
-.lcd-times{display:flex;justify-content:space-between;font-size:8px;color:#8a5500;margin-top:2px}
+/* Viz panel (right) */
+.viz-panel{flex:1;position:relative;overflow:hidden}
+.viz-labels{position:absolute;top:6px;left:8px;right:8px;display:flex;justify-content:space-between;z-index:2;
+  transition:opacity 0.3s}
+.fullscreen .viz-labels{opacity:0}
+.viz-label{font-family:'Space Mono',monospace;font-size:6px;color:rgba(255,255,255,0.2);letter-spacing:1.5px}
 
-@keyframes meterPulse{0%,100%{opacity:0.3}50%{opacity:0.9}}
-.meter-bar{animation:meterPulse 0.8s ease-in-out infinite}
+/* Spectrum bars */
+.spectrum{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:flex-end;gap:2px;padding:0 6px 4px}
+.bar{
+  flex:1;min-width:0;border-radius:1.5px 1.5px 0 0;
+  position:relative;
+  height:100%;
+  transform-origin:bottom;
+  will-change:transform;
+}
 
-.idle{font-size:14px;color:#c87000;text-align:center;opacity:0.3;
-  animation:ib 2.5s ease-in-out infinite}
-@keyframes ib{0%,100%{opacity:0.3}50%{opacity:0.1}}
+/* ── Bottom strip ── */
+.bottom-strip{
+  height:40px;padding:0 12px;display:flex;align-items:center;gap:6px;flex-shrink:0;
+  transition:opacity 0.3s,height 0.3s;
+}
+.fullscreen .bottom-strip{opacity:0;height:0;overflow:hidden}
 
-.btn-hit{position:absolute;z-index:10;opacity:0;cursor:pointer;border:none;background:none}
+.te-knob{width:22px;height:22px;border-radius:50%;position:relative;cursor:pointer;
+  box-shadow:0 2px 4px rgba(0,0,0,0.1),inset 0 1px 2px rgba(255,255,255,0.4);flex-shrink:0}
+.te-knob::after{content:'';position:absolute;top:3px;left:50%;width:1.5px;height:6px;
+  background:rgba(0,0,0,0.3);border-radius:1px;transform:translateX(-50%) rotate(var(--r,0deg))}
+.te-knob.o{background:linear-gradient(145deg,#ff8c42,#e06820);--r:45deg}
+.te-knob.g{background:linear-gradient(145deg,#4ac085,#2a8a5a);--r:-30deg}
+.te-knob.b{background:linear-gradient(145deg,#4a90d9,#2a6ab8);--r:60deg}
+.te-knob.w{background:linear-gradient(145deg,#f0f0ee,#d8d8d6);--r:-15deg}
+.knob-label{font-family:'Space Mono',monospace;font-size:4.5px;color:#999;text-align:center;margin-top:1px;letter-spacing:0.5px}
+.te-sep{width:1px;height:18px;background:rgba(0,0,0,0.06);margin:0 2px;flex-shrink:0}
+.te-btn{height:22px;padding:0 8px;border-radius:2px;border:none;cursor:pointer;background:rgba(0,0,0,0.04);
+  font-family:'Space Mono',monospace;font-size:7px;font-weight:700;color:#888;transition:all 0.15s;flex-shrink:0}
+.te-btn:hover{background:rgba(0,0,0,0.08);color:#0f0e12}
+.te-btn.active{background:#0f0e12;color:#fff}
+.progress-wrap{flex:1;margin:0 8px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.progress{height:2px;background:rgba(0,0,0,0.06);border-radius:1px;position:relative;cursor:pointer}
+.progress-fill{height:100%;width:100%;background:#ff8c42;border-radius:1px;
+  transform-origin:left;transform:scaleX(0);transition:transform 0.5s linear}
+.progress-dot{position:absolute;top:-3px;left:0;width:8px;height:8px;border-radius:50%;
+  background:#ff8c42;box-shadow:0 1px 3px rgba(255,140,66,0.3);
+  transition:transform 0.5s linear;transform:translateX(0)}
+.progress-times{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:6px;color:#aaa}
+.te-icon-btn{width:22px;height:22px;border-radius:2px;border:1px solid rgba(0,0,0,0.08);background:transparent;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;color:#888;transition:all 0.15s;flex-shrink:0}
+.te-icon-btn:hover{color:#ff8c42;border-color:#ff8c42}
+.te-dot{position:absolute;top:12px;right:12px;width:4px;height:4px;border-radius:50%;background:#ff8c42;z-index:5}
+.te-model{position:absolute;bottom:3px;right:12px;font-family:'Space Mono',monospace;font-size:4.5px;color:#bbb;letter-spacing:2px;z-index:5}
+.fullscreen .te-dot,.fullscreen .te-model{opacity:0}
+
+.idle{font-family:'Space Mono',monospace;font-size:11px;color:rgba(255,255,255,0.15);text-align:center}
+
+/* Button interaction feedback */
+.te-btn:active{transform:scale(0.93);background:rgba(0,0,0,0.12)}
+.te-icon-btn:active{transform:scale(0.9)}
+.te-knob:active{transform:scale(0.92);box-shadow:0 1px 2px rgba(0,0,0,0.15)}
+.win-dot:active{transform:scale(0.85)}
+
+/* Style toast */
+.style-toast{
+  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  font-family:'Space Mono',monospace;font-size:8px;color:rgba(255,255,255,0.5);
+  letter-spacing:2px;opacity:0;transition:opacity 0.3s;z-index:10;
+  pointer-events:none;
+}
+.style-toast.show{opacity:1}
+
+/* Animations */
+@keyframes b1{0%,100%{transform:scaleY(0.25)}15%{transform:scaleY(0.75)}40%{transform:scaleY(0.40)}65%{transform:scaleY(0.90)}85%{transform:scaleY(0.55)}}
+@keyframes b2{0%,100%{transform:scaleY(0.45)}20%{transform:scaleY(0.25)}45%{transform:scaleY(0.80)}70%{transform:scaleY(0.35)}90%{transform:scaleY(0.65)}}
+@keyframes b3{0%,100%{transform:scaleY(0.60)}10%{transform:scaleY(0.35)}35%{transform:scaleY(0.50)}55%{transform:scaleY(0.85)}80%{transform:scaleY(0.40)}}
+@keyframes b4{0%,100%{transform:scaleY(0.35)}25%{transform:scaleY(0.65)}50%{transform:scaleY(0.30)}75%{transform:scaleY(0.75)}95%{transform:scaleY(0.50)}}
 </style>
 </head><body>
 
-<div class="scale-wrap">
-<div class="container">
-<svg class="device-svg" viewBox="0 0 420 460" xmlns="http://www.w3.org/2000/svg">
-<defs>
-  <filter id="pTex"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" seed="2"/>
-    <feColorMatrix type="saturate" values="0"/><feBlend in="SourceGraphic" mode="multiply"/>
-    <feComposite in2="SourceGraphic" operator="in"/></filter>
-  <filter id="drop"><feDropShadow dx="0" dy="6" stdDeviation="12" flood-opacity="0.6"/></filter>
-  <filter id="inset"><feFlood flood-color="#000" flood-opacity="0.65"/>
-    <feComposite in2="SourceGraphic" operator="out"/><feGaussianBlur stdDeviation="4"/>
-    <feComposite in2="SourceGraphic" operator="atop"/></filter>
-  <filter id="shIn"><feFlood flood-color="#000" flood-opacity="0.3"/>
-    <feComposite in2="SourceGraphic" operator="out"/><feGaussianBlur stdDeviation="1.2"/>
-    <feComposite in2="SourceGraphic" operator="atop"/></filter>
-  <filter id="btnB"><feDropShadow dx="0" dy="1.2" stdDeviation="0.6" flood-opacity="0.5"/></filter>
-  <filter id="glow"><feGaussianBlur stdDeviation="2" result="b"/>
-    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-  <linearGradient id="bG" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stop-color="#282828"/><stop offset="3%" stop-color="#1c1c1c"/>
-    <stop offset="50%" stop-color="#141414"/><stop offset="97%" stop-color="#181818"/>
-    <stop offset="100%" stop-color="#101010"/></linearGradient>
-  <linearGradient id="eL" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stop-color="rgba(255,255,255,0.12)"/>
-    <stop offset="3%" stop-color="rgba(255,255,255,0.02)"/>
-    <stop offset="97%" stop-color="rgba(0,0,0,0.02)"/>
-    <stop offset="100%" stop-color="rgba(0,0,0,0.1)"/></linearGradient>
-  <linearGradient id="amBg" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stop-color="#1a0e00"/><stop offset="100%" stop-color="#0d0700"/></linearGradient>
-  <radialGradient id="scr" cx=".4" cy=".4" r=".6">
-    <stop offset="0%" stop-color="#555"/><stop offset="40%" stop-color="#333"/>
-    <stop offset="100%" stop-color="#111"/></radialGradient>
-  <linearGradient id="chr" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stop-color="#888"/><stop offset="30%" stop-color="#ccc"/>
-    <stop offset="50%" stop-color="#666"/><stop offset="80%" stop-color="#999"/>
-    <stop offset="100%" stop-color="#555"/></linearGradient>
-  <radialGradient id="gJack" cx=".5" cy=".4">
-    <stop offset="0%" stop-color="#5b5"/><stop offset="60%" stop-color="#292"/>
-    <stop offset="100%" stop-color="#161"/></radialGradient>
-  <linearGradient id="tBtn" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stop-color="#222"/><stop offset="100%" stop-color="#141414"/></linearGradient>
-  <linearGradient id="knob" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stop-color="#ddd"/><stop offset="15%" stop-color="#bbb"/>
-    <stop offset="50%" stop-color="#999"/><stop offset="85%" stop-color="#bbb"/>
-    <stop offset="100%" stop-color="#ccc"/></linearGradient>
-</defs>
+<div class="player" id="player">
+  <div class="te-dot"></div>
+  <div class="te-model">SP-V2 TE</div>
 
-<!-- BODY -->
-<rect x="14" y="14" width="392" height="440" rx="10" fill="url(#bG)" filter="url(#drop)"/>
-<rect x="14" y="14" width="392" height="440" rx="10" fill="url(#bG)" filter="url(#pTex)"/>
-<rect x="14" y="14" width="392" height="440" rx="10" fill="url(#eL)"/>
-<rect x="14" y="14" width="392" height="440" rx="10" fill="none" stroke="#0a0a0a" stroke-width="1"/>
-<line x1="24" y1="15" x2="396" y2="15" stroke="#333" stroke-width="0.4"/>
-<line x1="20" y1="32" x2="400" y2="32" stroke="#0c0c0c" stroke-width="0.5"/>
-<line x1="20" y1="32.5" x2="400" y2="32.5" stroke="#252525" stroke-width="0.3"/>
-
-<!-- Screws -->
-<circle cx="28" cy="28" r="3.5" fill="url(#scr)" stroke="#080808" stroke-width="0.4"/>
-<line x1="26" y1="28" x2="30" y2="28" stroke="#444" stroke-width="0.4"/>
-<circle cx="392" cy="28" r="3.5" fill="url(#scr)" stroke="#080808" stroke-width="0.4"/>
-<line x1="390" y1="28" x2="394" y2="28" stroke="#444" stroke-width="0.4"/>
-<circle cx="28" cy="440" r="3.5" fill="url(#scr)" stroke="#080808" stroke-width="0.4"/>
-<line x1="26" y1="492" x2="30" y2="492" stroke="#444" stroke-width="0.4"/>
-<circle cx="392" cy="440" r="3.5" fill="url(#scr)" stroke="#080808" stroke-width="0.4"/>
-<line x1="390" y1="492" x2="394" y2="492" stroke="#444" stroke-width="0.4"/>
-
-<!-- BRANDING -->
-<text x="32" y="53" font-family="Georgia,'Times New Roman',serif" font-size="19" font-weight="700" font-style="italic" fill="#222" letter-spacing="2">Spottt</text>
-<text x="32" y="52.5" font-family="Georgia,'Times New Roman',serif" font-size="19" font-weight="700" font-style="italic" fill="#666" letter-spacing="2">Spottt</text>
-<text x="32" y="52" font-family="Georgia,'Times New Roman',serif" font-size="19" font-weight="700" font-style="italic" fill="#999" letter-spacing="2" style="filter:drop-shadow(0 -0.5px 0 rgba(255,255,255,0.08))">Spottt</text>
-<text x="120" y="48" font-family="Helvetica Neue,sans-serif" font-size="3.5" font-weight="300" fill="#3a3a3a" letter-spacing="1.5">OPTICAL DIGITAL OUTPUT</text>
-<text x="120" y="53" font-family="Helvetica Neue,sans-serif" font-size="3.5" font-weight="300" fill="#3a3a3a" letter-spacing="1.5">DIGITAL SIGNAL PROCESSING</text>
-<text x="310" y="48" font-family="Helvetica Neue,sans-serif" font-size="3.5" font-weight="300" fill="#444" letter-spacing="0.5">COMPACT DISC</text>
-<text x="310" y="53" font-family="Helvetica Neue,sans-serif" font-size="2.8" font-weight="300" fill="#333" letter-spacing="0.3">DIGITAL AUDIO</text>
-<circle cx="370" cy="48" r="8" fill="none" stroke="#333" stroke-width="0.5"/>
-<circle cx="370" cy="48" r="6" fill="#0a0a0a" stroke="#222" stroke-width="0.3"/>
-<circle cx="370" cy="48" r="2" fill="#1a1a1a"/>
-
-<!-- PEAK METER -->
-<rect x="36" y="62" width="348" height="10" rx="1.5" fill="#0a0800" stroke="#1a1200" stroke-width="0.5"/>
-<text x="40" y="70" font-family="Helvetica Neue,sans-serif" font-size="3" fill="#8a5500">PEAK LEVEL</text>
-<g class="meter-bar"><rect x="80" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.9"/>
-<rect x="88" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.85"/>
-<rect x="96" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.75"/>
-<rect x="104" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.65"/>
-<rect x="112" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.5"/>
-<rect x="120" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.35"/>
-<rect x="128" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.2"/>
-<rect x="136" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.1"/></g>
-<text x="180" y="70" font-family="Helvetica Neue,sans-serif" font-size="3" fill="#c87000" text-anchor="middle">L          R</text>
-<g class="meter-bar" style="animation-delay:0.15s"><rect x="220" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.9"/>
-<rect x="228" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.8"/>
-<rect x="236" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.7"/>
-<rect x="244" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.55"/>
-<rect x="252" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.4"/>
-<rect x="260" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.25"/>
-<rect x="268" y="65" width="6" height="4" rx="0.3" fill="#c87000" opacity="0.12"/></g>
-
-<!-- LCD SCREEN -->
-<rect x="32" y="76" width="356" height="262" rx="3" fill="#0d0700" filter="url(#inset)"/>
-<rect x="36" y="80" width="348" height="254" rx="2" fill="url(#amBg)"/>
-<rect x="36" y="80" width="348" height="254" rx="2" fill="none" stroke="rgba(200,112,0,0.06)" stroke-width="2"/>
-<ellipse cx="170" cy="160" rx="120" ry="70" fill="rgba(200,140,50,0.012)"/>
-<circle cx="388" cy="84" r="2.5" fill="#ff6600" filter="url(#glow)" opacity="0.85">
-  <animate attributeName="opacity" values="0.85;0.4;0.85" dur="2s" repeatCount="indefinite"/>
-</circle>
-
-<!-- CONTROLS — minimal transport only -->
-<line x1="32" y1="348" x2="388" y2="348" stroke="#0c0c0c" stroke-width="0.5"/>
-<line x1="32" y1="348.5" x2="388" y2="348.5" stroke="#252525" stroke-width="0.3"/>
-
-<!-- 3 transport buttons centered -->
-<g filter="url(#btnB)"><rect x="110" y="362" width="56" height="20" rx="2" fill="url(#tBtn)" stroke="#0a0a0a" stroke-width="0.5"/><rect x="110" y="362" width="56" height="6" rx="2" fill="rgba(255,255,255,0.04)"/></g>
-<text x="138" y="375" text-anchor="middle" font-family="Helvetica Neue,sans-serif" font-size="8" fill="#888">|◁◁</text>
-
-<g filter="url(#btnB)"><rect x="174" y="362" width="72" height="20" rx="2" fill="url(#tBtn)" stroke="#0a0a0a" stroke-width="0.5"/><rect x="174" y="362" width="72" height="6" rx="2" fill="rgba(255,255,255,0.04)"/></g>
-<text x="210" y="376" text-anchor="middle" font-family="Helvetica Neue,sans-serif" font-size="9" fill="#999">▶ / ‖</text>
-
-<g filter="url(#btnB)"><rect x="254" y="362" width="56" height="20" rx="2" fill="url(#tBtn)" stroke="#0a0a0a" stroke-width="0.5"/><rect x="254" y="362" width="56" height="6" rx="2" fill="rgba(255,255,255,0.04)"/></g>
-<text x="282" y="375" text-anchor="middle" font-family="Helvetica Neue,sans-serif" font-size="8" fill="#888">▷▷|</text>
-
-<!-- Bottom strip -->
-<line x1="32" y1="394" x2="388" y2="394" stroke="#0c0c0c" stroke-width="0.5"/>
-<line x1="32" y1="394.5" x2="388" y2="394.5" stroke="#222" stroke-width="0.3"/>
-
-<!-- Headphone jack (green ring) -->
-<circle cx="60" cy="414" r="7" fill="#0a0a0a" stroke="url(#chr)" stroke-width="1.2"/>
-<circle cx="60" cy="414" r="5" fill="#060606"/>
-<circle cx="60" cy="414" r="5.8" fill="none" stroke="url(#gJack)" stroke-width="1"/>
-<circle cx="60" cy="414" r="2.5" fill="#040404"/>
-<text x="60" y="428" text-anchor="middle" font-family="Helvetica Neue,sans-serif" font-size="3.5" font-weight="300" fill="#444" letter-spacing="0.5">PHONES</text>
-
-<!-- Speaker grille -->
-<g opacity="0.25">
-  <g id="spRow"><circle cx="0" cy="0" r="0.8" fill="#555"/><circle cx="6" cy="0" r="0.8" fill="#555"/><circle cx="12" cy="0" r="0.8" fill="#555"/><circle cx="18" cy="0" r="0.8" fill="#555"/><circle cx="24" cy="0" r="0.8" fill="#555"/><circle cx="30" cy="0" r="0.8" fill="#555"/><circle cx="36" cy="0" r="0.8" fill="#555"/><circle cx="42" cy="0" r="0.8" fill="#555"/><circle cx="48" cy="0" r="0.8" fill="#555"/><circle cx="54" cy="0" r="0.8" fill="#555"/></g>
-  <use href="#spRow" transform="translate(270,406)"/><use href="#spRow" transform="translate(270,412)"/>
-  <use href="#spRow" transform="translate(270,418)"/><use href="#spRow" transform="translate(270,424)"/>
-</g>
-
-<!-- Power LED -->
-<circle cx="388" cy="410" r="2" fill="#ff6600" filter="url(#glow)" opacity="0.75"/>
-<text x="388" y="420" text-anchor="middle" font-family="Helvetica Neue,sans-serif" font-size="2.5" font-weight="300" fill="#555">PWR</text>
-
-<!-- Model -->
-<text x="210" y="444" text-anchor="middle" font-family="Helvetica Neue,sans-serif" font-size="3.5" font-weight="300" fill="#333" letter-spacing="1.5">D-SP555</text>
-</svg>
-
-<!-- LCD CONTENT -->
-<div class="lcd-layer">
-  <div class="lcd-head">
-    <div>
-      <span class="lcd-track-num" id="trackNum">01</span>
-      <span class="lcd-time" id="lcdTime">--:--</span>
-      <span class="lcd-indicators">AMS</span>
+  <!-- Top -->
+  <div class="top-strip">
+    <span class="brand">SPOTTT</span>
+    <div class="track-meta">
+      <span class="track-name" id="trackName"></span>
+      <span class="track-artist" id="trackArtist"></span>
     </div>
-    <div class="lcd-indicators" id="modeIndicators"></div>
+    <span class="track-time" id="trackTime">--:--</span>
+    <div class="win-dots">
+      <div class="win-dot close" id="btnClose"></div>
+      <div class="win-dot mini" id="btnMini"></div>
+      <div class="win-dot full" id="btnFull"></div>
+    </div>
   </div>
-  <div class="lcd-track" id="trackName"></div>
-  <div class="lcd-artist" id="trackArtist"></div>
-  <div class="lcd-art" id="artDisplay"><div class="idle">INSERT DISC</div></div>
-  <div class="lcd-progress">
-    <div class="lcd-bar"><div class="lcd-bar-fill" id="progressFill"></div></div>
-    <div class="lcd-times"><span id="timePos">00:00</span><span>STEP/MIN SEC</span><span id="timeDur">00:00</span></div>
-  </div>
-</div>
 
-<!-- Button hit areas -->
-<button class="btn-hit" style="top:362px;left:174px;width:72px;height:20px" id="btnPlay"></button>
-<button class="btn-hit" style="top:362px;left:110px;width:56px;height:20px" id="btnPrev"></button>
-<button class="btn-hit" style="top:362px;left:254px;width:56px;height:20px" id="btnNext"></button>
-</div>
+  <!-- OLED -->
+  <div class="visual-area">
+    <div class="art-panel">
+      <div class="art-content art-layer" id="artA"><div class="idle">SPOTTT</div></div>
+      <div class="art-content art-layer hidden" id="artB"></div>
+    </div>
+    <div class="viz-panel">
+      <div class="viz-labels">
+        <span class="viz-label" id="bpmLabel">-- BPM</span>
+        <span class="viz-label" id="vizMode">VISUALIZER · SPECTRUM</span>
+      </div>
+      <div class="spectrum" id="spectrum"></div>
+    </div>
+    <div class="style-toast" id="styleToast"></div>
+  </div>
+
+  <!-- Bottom -->
+  <div class="bottom-strip">
+    <div style="display:flex;gap:5px;align-items:flex-end">
+      <div><div class="te-knob o"></div><div class="knob-label">VOL</div></div>
+      <div><div class="te-knob g" id="knobStyle"></div><div class="knob-label">STYLE</div></div>
+      <div><div class="te-knob b" id="knobViz"></div><div class="knob-label">VIZ</div></div>
+      <div><div class="te-knob w"></div><div class="knob-label">FX</div></div>
+    </div>
+    <div class="te-sep"></div>
+    <button class="te-btn" id="btnShuffle">⇌</button>
+    <button class="te-btn" id="btnPrev">|◁◁</button>
+    <button class="te-btn active" id="btnPlay">▶</button>
+    <button class="te-btn" id="btnNext">▷▷|</button>
+    <button class="te-btn" id="btnRepeat">↻</button>
+    <div class="progress-wrap">
+      <div class="progress"><div class="progress-fill" id="progressFill"></div><div class="progress-dot" id="progressDot"></div></div>
+      <div class="progress-times"><span id="timePos">00:00</span><span id="timeDur">00:00</span></div>
+    </div>
+    <div class="te-sep"></div>
+    <button class="te-icon-btn" id="btnFullscreen" title="Fullscreen">⛶</button>
+  </div>
 </div>
 
 <script>
 const API='http://127.0.0.1:18899';
-let curId=null,beatTimer=null;
 const $=id=>document.getElementById(id);
+let curId=null, isFullscreen=false;
+let activeArt='A';
+let lastProgress=0, lastDuration=0, lastPollTime=0, isPlaying=false;
+
 function fmt(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60);return`${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
 
+// Generate spectrum bars
+(function(){
+  const spec=$('spectrum');
+  const anims=['b1','b2','b3','b4'];
+  for(let i=0;i<130;i++){
+    const bar=document.createElement('div');
+    bar.className='bar';
+    bar.style.transform=`scaleY(${0.15+Math.random()*0.55})`;
+    bar.style.background=`linear-gradient(0deg,rgba(255,255,255,0.03),rgba(255,255,255,${0.25+Math.random()*0.35}))`;
+    bar.style.animation=`${anims[i%4]} ${0.5+Math.random()*0.6}s ease-in-out infinite`;
+    bar.style.animationDelay=(i*0.012+Math.random()*0.08)+'s';
+    spec.appendChild(bar);
+  }
+})();
+
+// Fullscreen toggle — calls pywebview native fullscreen + CSS mode
+function toggleFullscreen(){
+  isFullscreen=!isFullscreen;
+  const p=$('player');
+  // Call backend to toggle native window fullscreen
+  fetch(API+'/action/fullscreen',{method:'POST'}).catch(()=>{});
+  if(isFullscreen){
+    p.classList.add('fullscreen');
+    document.body.style.background='#000';
+  }else{
+    p.classList.remove('fullscreen');
+    document.body.style.background='#d4d4d4';
+  }
+}
+$('btnFullscreen').onclick=toggleFullscreen;
+
+// Window control dots
+$('btnClose').onclick=()=>fetch(API+'/action/quit',{method:'POST'}).catch(()=>{});
+$('btnMini').onclick=()=>fetch(API+'/action/minimize',{method:'POST'}).catch(()=>{});
+$('btnFull').onclick=()=>toggleFullscreen();
+
+// Style toast
+function showStyleToast(name){
+  const t=$('styleToast');
+  t.textContent='STYLE \u00b7 '+(name||'').toUpperCase();
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1500);
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown',e=>{
+  if(e.repeat) return;
+  if(e.key==='f'||e.key==='F') toggleFullscreen();
+  if(e.key==='Escape'&&isFullscreen) toggleFullscreen();
+  if(e.key===' '){e.preventDefault();$('btnPlay').textContent=$('btnPlay').textContent==='\u23F8'?'\u25B6':'\u23F8';fetch(API+'/action/play_pause',{method:'POST'}).catch(()=>{})}
+  if(e.key==='ArrowLeft') fetch(API+'/action/prev_track',{method:'POST'}).catch(()=>{});
+  if(e.key==='ArrowRight') fetch(API+'/action/next_track',{method:'POST'}).catch(()=>{});
+  if(e.key==='s'||e.key==='S'){fetch(API+'/action/next_style',{method:'POST'}).then(()=>fetch(API+'/state').then(r=>r.json()).then(d=>showStyleToast(d.style))).catch(()=>{});curId=null}
+  if((e.key==='k'||e.key==='K')&&isFullscreen){/* viz switch - future */}
+});
+
+// Polling
 async function poll(){
   try{
     const r=await fetch(API+'/state');if(!r.ok)return;const d=await r.json();
     if(!d.track_id){
       $('trackName').textContent='';$('trackArtist').textContent='';
-      $('trackNum').textContent='--';$('lcdTime').textContent='--:--';
-      $('progressFill').style.width='0%';$('timePos').textContent='00:00';$('timeDur').textContent='00:00';
-      $('artDisplay').innerHTML='<div class="idle">INSERT DISC</div>';return;
+      $('trackTime').textContent='--:--';
+      $('progressFill').style.transform='scaleX(0)';
+      $('progressDot').style.transform='translateX(0)';
+      $('timePos').textContent='00:00';
+      $('timeDur').textContent='00:00';$('btnPlay').textContent='\u25B6';
+      const outEl=$('art'+activeArt);
+      const inEl=activeArt==='A'?$('artA'):$('artA');
+      $('artA').innerHTML='<div class="idle">SPOTTT</div>';
+      $('artA').classList.remove('hidden');
+      $('artB').classList.add('hidden');
+      activeArt='A';
+      isPlaying=false;
+      lastDuration=0;
+      document.querySelectorAll('.bar').forEach(b=>{b.style.animationPlayState='paused'});
+      return;
     }
-    $('trackName').textContent=d.name||'';$('trackArtist').textContent=d.artist||'';
-    $('trackNum').textContent='01';
-    $('lcdTime').textContent=fmt(d.progress_ms);
-    $('progressFill').style.width=(d.duration_ms>0?(d.progress_ms/d.duration_ms)*100:0)+'%';
-    $('timePos').textContent=fmt(d.progress_ms);$('timeDur').textContent=fmt(d.duration_ms);
-    $('modeIndicators').textContent=d.is_playing?'▶ PLAY':'⏸ PAUSE';
-    if(d.track_id!==curId){curId=d.track_id;fetchArt();
-}
+    $('trackName').textContent=d.name||'';
+    $('trackArtist').textContent=d.artist||'';
+    $('trackTime').textContent=fmt(d.progress_ms);
+
+    // Store for smooth interpolation
+    lastProgress=d.progress_ms;
+    lastDuration=d.duration_ms;
+    lastPollTime=Date.now();
+    isPlaying=d.is_playing;
+
+    const pct=d.duration_ms>0?(d.progress_ms/d.duration_ms):0;
+    $('progressFill').style.transform=`scaleX(${pct})`;
+    const barWidth=$('progressFill').parentElement.offsetWidth;
+    $('progressDot').style.transform=`translateX(${pct*barWidth}px)`;
+    $('timePos').textContent=fmt(d.progress_ms);
+    $('timeDur').textContent=fmt(d.duration_ms);
+    $('btnPlay').textContent=d.is_playing?'\u23F8':'\u25B6';
+    $('btnPlay').classList.toggle('active',d.is_playing);
+    $('bpmLabel').textContent=(d.bpm?Math.round(d.bpm):'--')+' BPM';
+    $('vizMode').textContent='STYLE \u00b7 '+(d.style||'BRAILLE').toUpperCase();
+    document.querySelectorAll('.bar').forEach(b=>{b.style.animationPlayState=d.is_playing?'running':'paused'});
+    if(d.track_id!==curId){curId=d.track_id;fetchArt()}
   }catch(e){}}
 
-async function fetchArt(){try{const r=await fetch(API+'/art');if(!r.ok)return;
-  const d=await r.json();if(d.html)$('artDisplay').innerHTML=d.html}catch(e){}}
+async function fetchArt(){
+  try{
+    const r=await fetch(API+'/art');if(!r.ok)return;
+    const d=await r.json();if(!d.html)return;
 
-$('btnPlay')?.addEventListener('click',async()=>{try{await fetch(API+'/action/play_pause',{method:'POST'})}catch(e){}});
-$('btnPrev')?.addEventListener('click',async()=>{try{await fetch(API+'/action/prev_track',{method:'POST'})}catch(e){}});
-$('btnNext')?.addEventListener('click',async()=>{try{await fetch(API+'/action/next_track',{method:'POST'})}catch(e){}});
+    const incoming=activeArt==='A'?'B':'A';
+    const inEl=$('art'+incoming);
+    const outEl=$('art'+activeArt);
 
-setInterval(poll,1000);poll();
+    inEl.innerHTML=d.html;
+    inEl.classList.remove('hidden');
+    outEl.classList.add('hidden');
+
+    activeArt=incoming;
+  }catch(e){}}
+
+// Client-side progress interpolation
+function updateProgressSmooth(){
+  if(!isPlaying||lastDuration<=0)return;
+  const elapsed=Date.now()-lastPollTime;
+  const currentMs=Math.min(lastProgress+elapsed,lastDuration);
+  const pct=currentMs/lastDuration;
+  $('progressFill').style.transform=`scaleX(${pct})`;
+  const barWidth=$('progressFill').parentElement.offsetWidth;
+  $('progressDot').style.transform=`translateX(${pct*barWidth}px)`;
+  $('timePos').textContent=fmt(currentMs);
+}
+setInterval(updateProgressSmooth,100);
+
+// Button handlers
+$('btnPlay').onclick=()=>{$('btnPlay').textContent=$('btnPlay').textContent==='\u23F8'?'\u25B6':'\u23F8';fetch(API+'/action/play_pause',{method:'POST'}).catch(()=>{})};
+$('btnPrev').onclick=()=>fetch(API+'/action/prev_track',{method:'POST'}).catch(()=>{});
+$('btnNext').onclick=()=>fetch(API+'/action/next_track',{method:'POST'}).catch(()=>{});
+$('knobStyle').onclick=()=>{fetch(API+'/action/next_style',{method:'POST'}).then(()=>fetch(API+'/state').then(r=>r.json()).then(d=>showStyleToast(d.style))).catch(()=>{});curId=null};
+$('btnShuffle').onclick=()=>fetch(API+'/action/shuffle',{method:'POST'}).catch(()=>{});
+$('btnRepeat').onclick=()=>fetch(API+'/action/repeat',{method:'POST'}).catch(()=>{});
+
+// Recursive setTimeout polling
+async function pollLoop(){await poll();setTimeout(pollLoop,1000)}
+pollLoop();
 </script>
 </body></html>

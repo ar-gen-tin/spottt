@@ -1,0 +1,21 @@
+<svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="16" cy="20" r="4" fill="black" opacity="0.08"/>
+  <circle cx="16" cy="38" r="5.5" fill="black" opacity="0.25"/>
+  <circle cx="16" cy="56" r="7" fill="black" opacity="0.45"/>
+  <circle cx="16" cy="74" r="5.5" fill="black" opacity="0.25"/>
+  <circle cx="16" cy="90" r="4" fill="black" opacity="0.08"/>
+  <circle cx="38" cy="20" r="5" fill="black" opacity="0.15"/>
+  <circle cx="38" cy="38" r="7.5" fill="black" opacity="0.5"/>
+  <circle cx="38" cy="56" r="10" fill="black" opacity="0.85"/>
+  <circle cx="38" cy="74" r="7.5" fill="black" opacity="0.5"/>
+  <circle cx="38" cy="90" r="5" fill="black" opacity="0.15"/>
+  <circle cx="62" cy="28" r="5.5" fill="black" opacity="0.3"/>
+  <circle cx="62" cy="46" r="8" fill="black" opacity="0.65"/>
+  <circle cx="62" cy="64" r="8" fill="black" opacity="0.65"/>
+  <circle cx="62" cy="82" r="5.5" fill="black" opacity="0.3"/>
+  <circle cx="86" cy="38" r="5" fill="black" opacity="0.2"/>
+  <circle cx="86" cy="56" r="7" fill="black" opacity="0.45"/>
+  <circle cx="86" cy="74" r="5" fill="black" opacity="0.2"/>
+  <circle cx="106" cy="50" r="4.5" fill="black" opacity="0.12"/>
+  <circle cx="106" cy="64" r="4.5" fill="black" opacity="0.12"/>
+</svg>

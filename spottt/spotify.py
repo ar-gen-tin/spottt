@@ -170,6 +170,12 @@ class SpotifyClient:
     def previous_track(self):
         return self._api_request("POST", "/me/player/previous")
 
+    def shuffle(self, state: bool = True):
+        return self._api_request("PUT", f"/me/player/shuffle?state={'true' if state else 'false'}")
+
+    def set_repeat(self, mode: str = "off"):
+        return self._api_request("PUT", f"/me/player/repeat?state={mode}")
+
     def download_image(self, url: str) -> bytes:
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req, timeout=15) as resp:
