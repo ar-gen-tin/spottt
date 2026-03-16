@@ -13,31 +13,32 @@ from typing import Optional
 import numpy as np
 from PIL import Image
 
-# Add ascii-art scripts to path for importing its core modules.
+# Temporarily add ascii-art scripts to path for imports, then restore
 _ASCII_ART_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "ascii-art",
     "scripts",
 )
-if _ASCII_ART_DIR not in sys.path:
-    sys.path.insert(0, _ASCII_ART_DIR)
-
-from core.pipeline import (
-    process_image,
-    process_image_for_braille,
-    process_image_for_edge,
-)
-from core.styles import (
-    classic_ascii,
-    braille_style,
-    block_style,
-    edge_style,
-    particles_style,
-    DEFAULT_RAMP,
-    PRESETS,
-)
-from core.colors import apply_color
-from core.dither import apply_dither
+sys.path.insert(0, _ASCII_ART_DIR)
+try:
+    from core.pipeline import (
+        process_image,
+        process_image_for_braille,
+        process_image_for_edge,
+    )
+    from core.styles import (
+        classic_ascii,
+        braille_style,
+        block_style,
+        edge_style,
+        particles_style,
+        DEFAULT_RAMP,
+        PRESETS,
+    )
+    from core.colors import apply_color
+    from core.dither import apply_dither
+finally:
+    sys.path.remove(_ASCII_ART_DIR)
 
 # Available art styles
 STYLES = [
@@ -67,6 +68,34 @@ class ArtFrame:
     chars: list          # list[list[str]]
     colors: np.ndarray   # (rows, cols, 3) uint8 RGB
     key: tuple = None    # (track_id, style, cols) — content-based cache key
+
+    def to_html(self, brightness: float = 1.0) -> str:
+        """Convert directly to HTML spans — no ANSI intermediate step."""
+        lines = []
+        for r, row in enumerate(self.chars):
+            parts = []
+            prev_rgb = None
+            for c, ch in enumerate(row):
+                if r < self.colors.shape[0] and c < self.colors.shape[1]:
+                    cr = min(255, int(self.colors[r, c, 0] * brightness))
+                    cg = min(255, int(self.colors[r, c, 1] * brightness))
+                    cb = min(255, int(self.colors[r, c, 2] * brightness))
+                    rgb = (cr, cg, cb)
+                    if rgb != prev_rgb:
+                        if prev_rgb is not None:
+                            parts.append('</span>')
+                        parts.append(f'<span style="color:rgb({cr},{cg},{cb})">')
+                        prev_rgb = rgb
+                else:
+                    ch_safe = ch.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    parts.append(ch_safe)
+                    continue
+                ch_safe = ch.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                parts.append(ch_safe)
+            if prev_rgb is not None:
+                parts.append('</span>')
+            lines.append(''.join(parts))
+        return '\n'.join(lines)
 
 
 class AsciiRenderer:

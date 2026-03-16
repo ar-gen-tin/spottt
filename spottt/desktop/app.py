@@ -4,61 +4,15 @@ Runs a pywebview window (native macOS WebKit) showing the retro device,
 with a background thread polling Spotify and feeding data via a local HTTP API.
 """
 
-import html
 import os
 import sys
 import threading
 import time
 
-# Ensure parent package is importable
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 from spottt.auth import SpotifyAuth
 from spottt.spotify import SpotifyClient
 from spottt.renderer import AsciiRenderer
 from spottt.desktop.server import state, set_action_callback, start_server
-
-
-def ansi_to_html(ansi_str: str) -> str:
-    """Convert ANSI-colored ASCII art string to HTML spans."""
-    import re
-    if not ansi_str:
-        return ""
-
-    result = []
-    lines = ansi_str.split("\n")
-
-    for line in lines:
-        parts = re.split(r'(\033\[[0-9;]*m)', line)
-        html_line = []
-        current_color = None
-
-        for part in parts:
-            if part.startswith('\033['):
-                # Parse ANSI escape
-                codes = part[2:-1]  # strip \033[ and m
-                if codes == '0':
-                    if current_color:
-                        html_line.append('</span>')
-                        current_color = None
-                elif codes.startswith('38;2;'):
-                    # True color: 38;2;R;G;B
-                    rgb = codes[5:].split(';')
-                    if len(rgb) >= 3:
-                        if current_color:
-                            html_line.append('</span>')
-                        color = f"rgb({rgb[0]},{rgb[1]},{rgb[2]})"
-                        html_line.append(f'<span style="color:{color}">')
-                        current_color = color
-            else:
-                html_line.append(html.escape(part))
-
-        if current_color:
-            html_line.append('</span>')
-
-        result.append(''.join(html_line))
-
-    return '\n'.join(result)
 
 
 class SpotifyPoller:
@@ -69,6 +23,7 @@ class SpotifyPoller:
         self.client = SpotifyClient(self.auth)
         self.renderer = AsciiRenderer()
         self.running = True
+        self._fail_count = 0
         self.current_track = None
         self.current_image_bytes = None
         self.current_frame = None
@@ -86,8 +41,11 @@ class SpotifyPoller:
         while self.running:
             try:
                 self._poll()
+                self._fail_count = 0
             except Exception:
-                pass
+                self._fail_count += 1
+                if self._fail_count >= 3:
+                    state.set_error("Connection lost")
             time.sleep(2.0)
 
     def _poll(self):
@@ -125,8 +83,7 @@ class SpotifyPoller:
             self.current_frame = self.renderer.render_frame(
                 self.current_image_bytes, cols=65, track_id=track.track_id,
             )
-            ansi = self.renderer.render_with_pulse(self.current_frame, 1.0)
-            art_html = ansi_to_html(ansi)
+            art_html = self.current_frame.to_html(brightness=1.0)
             state.update_from_track(track, art_html, self.bpm, self.renderer.current_style)
         except Exception:
             pass
@@ -204,8 +161,7 @@ class SpotifyPoller:
                     self.current_image_bytes, cols=65,
                     track_id=self.current_track.track_id,
                 )
-                ansi = self.renderer.render_with_pulse(self.current_frame, 1.0)
-                art_html = ansi_to_html(ansi)
+                art_html = self.current_frame.to_html(brightness=1.0)
                 state.update_from_track(
                     self.current_track, art_html, self.bpm,
                     self.renderer.current_style,

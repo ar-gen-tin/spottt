@@ -25,6 +25,7 @@ class SpotttState:
         self.bpm = 120.0
         self.art_html = ""  # pre-rendered HTML for the ASCII art
         self.style = "braille"
+        self.error = ""
         self._lock = threading.Lock()
 
     def to_dict(self) -> dict:
@@ -39,6 +40,7 @@ class SpotttState:
                 "is_playing": self.is_playing,
                 "bpm": self.bpm,
                 "style": self.style,
+                "error": self.error,
             }
 
     def get_art_html(self) -> str:
@@ -58,6 +60,7 @@ class SpotttState:
                 self.art_html = art_html
                 self.bpm = bpm
                 self.style = style
+                self.error = ""
             else:
                 self.track_id = None
                 self.name = ""
@@ -67,6 +70,10 @@ class SpotttState:
                 self.duration_ms = 0
                 self.is_playing = False
                 self.art_html = ""
+
+    def set_error(self, msg):
+        with self._lock:
+            self.error = msg
 
 
 # Global shared state
@@ -123,7 +130,11 @@ class APIHandler(BaseHTTPRequestHandler):
 
 def start_server():
     """Start the API server in a background thread."""
-    server = ThreadingHTTPServer(("127.0.0.1", PORT), APIHandler)
+    try:
+        server = ThreadingHTTPServer(("127.0.0.1", PORT), APIHandler)
+    except OSError as e:
+        print(f"Error: Port {PORT} is in use. Is another Spottt instance running?")
+        raise
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server

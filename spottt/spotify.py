@@ -123,7 +123,7 @@ class SpotifyClient:
         try:
             data = self._api_get(f"/audio-features/{track_id}")
             return data or {}
-        except Exception:
+        except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError):
             return {}
 
     def get_audio_analysis(self, track_id: str) -> dict:
@@ -131,7 +131,7 @@ class SpotifyClient:
         try:
             data = self._api_get(f"/audio-analysis/{track_id}")
             return data or {}
-        except Exception:
+        except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError):
             return {}
 
     # ── Playback controls ────────────────────────────────────────

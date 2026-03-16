@@ -55,7 +55,7 @@ class SpotifyAuth:
                 self._refresh()
                 return self.access_token
             except Exception:
-                pass
+                print("  Token refresh failed, re-authorizing...")
         self._authorize()
         return self.access_token
 
@@ -114,7 +114,10 @@ class SpotifyAuth:
             def log_message(self, format, *args):
                 pass
 
-        server = http.server.HTTPServer(("127.0.0.1", 8888), CallbackHandler)
+        try:
+            server = http.server.HTTPServer(("127.0.0.1", 8888), CallbackHandler)
+        except OSError as e:
+            raise RuntimeError(f"Port 8888 is in use. Close the other process and retry. ({e})")
         server.timeout = 300
 
         print("\n  Opening browser for Spotify authorization...")
@@ -140,7 +143,7 @@ class SpotifyAuth:
             data=body,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             result = json.loads(resp.read())
         self.access_token = result["access_token"]
         self.refresh_token = result.get("refresh_token", self.refresh_token)

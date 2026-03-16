@@ -222,6 +222,7 @@ const $=id=>document.getElementById(id);
 let curId=null, isFullscreen=false;
 let activeArt='A';
 let lastProgress=0, lastDuration=0, lastPollTime=0, isPlaying=false;
+let pollFailCount=0;
 
 function fmt(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60);return`${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
 
@@ -324,8 +325,22 @@ async function poll(){
     $('bpmLabel').textContent=(d.bpm?Math.round(d.bpm):'--')+' BPM';
     $('vizMode').textContent='STYLE \u00b7 '+(d.style||'BRAILLE').toUpperCase();
     document.querySelectorAll('.bar').forEach(b=>{b.style.animationPlayState=d.is_playing?'running':'paused'});
+    // Error handling from backend
+    if(d.error){
+      $('bpmLabel').textContent=d.error.toUpperCase();
+      $('bpmLabel').style.color='rgba(206,32,33,0.6)';
+    }else{
+      $('bpmLabel').style.color='';
+    }
+    pollFailCount=0;
     if(d.track_id!==curId){curId=d.track_id;fetchArt()}
-  }catch(e){}}
+  }catch(e){
+    pollFailCount++;
+    if(pollFailCount>=3){
+      $('bpmLabel').textContent='NO CONNECTION';
+      $('bpmLabel').style.color='rgba(206,32,33,0.5)';
+    }
+  }}
 
 async function fetchArt(){
   try{

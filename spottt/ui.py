@@ -240,13 +240,6 @@ class SpotttUI:
         else:
             content_h += 6  # idle box
 
-        # If content exceeds terminal, limit art lines
-        max_art_lines = self.height - (content_h - len(art_lines if track and ascii_art else []))
-        if track and ascii_art and max_art_lines < len(art_lines):
-            art_lines_limited = max(3, max_art_lines)
-        else:
-            art_lines_limited = None  # no limit needed
-
         top_pad = max(0, (self.height - content_h) // 3)
         for _ in range(top_pad):
             self._out()
@@ -349,7 +342,7 @@ class SpotttUI:
         self._out()
         help_parts = [
             f"{WHITE}s{GRAY}/{WHITE}S{GRAY} Style ",
-            f"{WHITE}c{GRAY} Color ",
+            f"{WHITE}0{GRAY} Reset ",
             f"{WHITE}+{GRAY}/{WHITE}-{GRAY} Size ",
             f"{WHITE}q{GRAY} Quit{RESET}",
         ]
