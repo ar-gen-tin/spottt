@@ -1,10 +1,10 @@
 # Spottt
 
-A retro desktop widget that displays your currently playing Spotify track as ASCII art, now featuring a Teenage Engineering-inspired TE skin.
+![Spottt Banner](banner.png)
 
-Built with real-time Spotify sync and the [ascii-art](https://github.com/neethanwu/ascii-art) conversion engine.
+A retro desktop widget that displays your currently playing Spotify track as ASCII art in a Teenage Engineering-inspired shell.
 
-![Spottt Screenshot](screenshot.png)
+Built with Tauri + Rust and the [ascii-art](https://github.com/neethanwu/ascii-art) conversion engine.
 
 ## Features
 
@@ -21,12 +21,12 @@ Built with real-time Spotify sync and the [ascii-art](https://github.com/neethan
 
 ### macOS App (DMG)
 
-Download the latest `.dmg` from [Releases](https://github.com/ar_gen_tin/spottt/releases), drag to Applications, and run.
+Download the latest `.dmg` from [Releases](https://github.com/ar-gen-tin/spottt/releases), drag to Applications, and run.
 
 ### From Source
 
 ```bash
-git clone https://github.com/ar_gen_tin/spottt.git
+git clone https://github.com/ar-gen-tin/spottt.git
 cd spottt
 bash setup.sh
 ```
