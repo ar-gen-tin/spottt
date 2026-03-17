@@ -1,5 +1,6 @@
 //! Tauri commands: get_state, do_action, get_cover_art.
 
+use crate::safe_lock;
 use crate::state::{AppState, ArtPayload, StatePayload};
 use std::sync::Arc;
 use tauri::State;
@@ -8,7 +9,7 @@ const ART_COLS: usize = 38;
 
 #[tauri::command]
 pub fn get_state(app_state: State<'_, Arc<AppState>>) -> StatePayload {
-    app_state.state.lock().unwrap().clone()
+    safe_lock(&app_state.state).clone()
 }
 
 #[tauri::command]
@@ -16,7 +17,7 @@ pub fn do_action(action: String, _app_state: State<'_, Arc<AppState>>) {
     const ALLOWED: &[&str] = &["play_pause", "next_track", "prev_track", "shuffle", "repeat"];
     if !ALLOWED.contains(&action.as_str()) { return; }
     if let Some(sender) = crate::ACTION_SENDER.get() {
-        if let Some(ref sender) = *sender.lock().unwrap() {
+        if let Some(ref sender) = *safe_lock(sender) {
             let _ = sender.send(action);
         }
     }
@@ -25,12 +26,12 @@ pub fn do_action(action: String, _app_state: State<'_, Arc<AppState>>) {
 /// Render cover art in a specific ASCII style. Called synchronously from frontend.
 #[tauri::command]
 pub fn get_cover_art(style: String, app_state: State<'_, Arc<AppState>>) -> ArtPayload {
-    let image_bytes = app_state.image_bytes.lock().unwrap();
+    let image_bytes = safe_lock(&app_state.image_bytes);
     let Some(ref bytes) = *image_bytes else {
         return ArtPayload { html: String::new(), style };
     };
 
-    let mut renderer = app_state.renderer.lock().unwrap();
+    let mut renderer = safe_lock(&app_state.renderer);
 
     // Set the renderer to the requested style
     let styles = crate::renderer::STYLES;
@@ -41,10 +42,7 @@ pub fn get_cover_art(style: String, app_state: State<'_, Arc<AppState>>) -> ArtP
         }
     }
 
-    let track_id = app_state
-        .state
-        .lock()
-        .unwrap()
+    let track_id = safe_lock(&app_state.state)
         .track_id
         .clone()
         .unwrap_or_default();

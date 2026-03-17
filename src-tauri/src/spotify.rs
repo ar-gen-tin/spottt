@@ -41,7 +41,7 @@ impl TrackInfo {
         }
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs_f64();
         let elapsed_ms = ((now - self.timestamp) * 1000.0) as u64;
         (self.progress_ms + elapsed_ms).min(self.duration_ms)
@@ -144,7 +144,7 @@ impl SpotifyClient {
         let item = &data["item"];
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs_f64();
 
         let artists: Vec<String> = item["artists"]
@@ -197,7 +197,7 @@ impl SpotifyClient {
 
     pub fn get_artist_image_url(&self, artist_id: &str) -> Option<String> {
         {
-            let cache = self.artist_image_cache.lock().unwrap();
+            let cache = self.artist_image_cache.lock().unwrap_or_else(|e| e.into_inner());
             if let Some(cached) = cache.get(artist_id) {
                 return cached.clone();
             }
@@ -219,7 +219,7 @@ impl SpotifyClient {
 
         self.artist_image_cache
             .lock()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(artist_id.to_string(), url.clone());
         url
     }
@@ -243,7 +243,7 @@ impl SpotifyClient {
     }
 
     pub fn track_changed(&self, track: &TrackInfo) -> bool {
-        let mut last = self.last_track_id.lock().unwrap();
+        let mut last = self.last_track_id.lock().unwrap_or_else(|e| e.into_inner());
         let changed = last.as_deref() != Some(&track.track_id);
         *last = Some(track.track_id.clone());
         changed

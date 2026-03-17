@@ -19,6 +19,11 @@ _ASCII_ART_DIR = os.path.join(
     "ascii-art",
     "scripts",
 )
+if not os.path.isdir(_ASCII_ART_DIR):
+    raise ImportError(
+        f"ascii-art library not found at {_ASCII_ART_DIR}\n"
+        "  Clone it: git clone <ascii-art-repo> ascii-art/"
+    )
 sys.path.insert(0, _ASCII_ART_DIR)
 try:
     from core.pipeline import (

@@ -70,7 +70,7 @@ class SpotifyClient:
                 return json.loads(resp.read())
         except urllib.error.HTTPError as e:
             if _retries >= 2:
-                return None
+                raise ConnectionError(f"Spotify API {path} failed after 3 attempts: HTTP {e.code}")
             if e.code == 429:
                 retry_after = int(e.headers.get("Retry-After", 5))
                 time.sleep(retry_after)
@@ -181,7 +181,16 @@ class SpotifyClient:
         with urllib.request.urlopen(req, timeout=15) as resp:
             return resp.read()
 
-    def track_changed(self, track: TrackInfo) -> bool:
-        changed = track.track_id != self._last_track_id
+    def is_new_track(self, track: TrackInfo) -> bool:
+        """Check if track differs from last seen. Does NOT update state."""
+        return track.track_id != self._last_track_id
+
+    def mark_track_seen(self, track: TrackInfo):
+        """Record this track as the last seen."""
         self._last_track_id = track.track_id
+
+    def track_changed(self, track: TrackInfo) -> bool:
+        """Check + update in one call. Prefer is_new_track + mark_track_seen."""
+        changed = self.is_new_track(track)
+        self.mark_track_seen(track)
         return changed

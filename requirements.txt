@@ -1,3 +1,5 @@
 Pillow>=9.0
 numpy>=1.20
 pyfiglet>=0.8
+pywebview>=4.0  # desktop widget mode
+pyobjc-framework-Cocoa>=9.0; sys_platform == "darwin"  # macOS dock hiding

@@ -124,10 +124,9 @@ class SpotifyAuth:
         print(f"  If it doesn't open, visit:\n  {auth_url}\n")
         webbrowser.open(auth_url)
 
-        import time as _time
-        start = _time.time()
+        start = time.time()
         while code_result[0] is None:
-            if _time.time() - start > 300:
+            if time.time() - start > 300:
                 server.server_close()
                 raise RuntimeError("OAuth authorization timed out after 5 minutes")
             server.handle_request()
@@ -170,5 +169,10 @@ class SpotifyAuth:
         self.access_token = None
         self.refresh_token = None
         self.expires_at = 0
+        SpotifyAuth.clear_tokens()
+
+    @staticmethod
+    def clear_tokens():
+        """Remove stored tokens from disk."""
         if os.path.exists(TOKEN_FILE):
             os.remove(TOKEN_FILE)

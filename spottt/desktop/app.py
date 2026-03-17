@@ -42,7 +42,8 @@ class SpotifyPoller:
             try:
                 self._poll()
                 self._fail_count = 0
-            except Exception:
+            except Exception as e:
+                print(f"  Poll error: {e}", file=sys.stderr)
                 self._fail_count += 1
                 if self._fail_count >= 3:
                     state.set_error("Connection lost")
@@ -59,7 +60,8 @@ class SpotifyPoller:
         self.current_track = track
 
         # New track — fetch art
-        if self.client.track_changed(track):
+        if self.client.is_new_track(track):
+            self.client.mark_track_seen(track)
             # Update metadata immediately before downloading art
             state.update_from_track(track, state.get_art_html(), self.bpm, self.renderer.current_style)
             self._fetch_art(track)
@@ -85,14 +87,15 @@ class SpotifyPoller:
             )
             art_html = self.current_frame.to_html(brightness=1.0)
             state.update_from_track(track, art_html, self.bpm, self.renderer.current_style)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  Art fetch failed: {e}", file=sys.stderr)
 
     def _fetch_bpm(self, track):
         try:
             features = self.client.get_audio_features(track.track_id)
             self.bpm = features.get("tempo", 120.0)
-        except Exception:
+        except Exception as e:
+            print(f"  BPM fetch failed: {e}", file=sys.stderr)
             self.bpm = 120.0
 
     def handle_action(self, action: str):
@@ -103,20 +106,20 @@ class SpotifyPoller:
                     self.client.pause()
                 else:
                     self.client.play()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  play_pause failed: {e}", file=sys.stderr)
             return
         elif action == "next_track":
             try:
                 self.client.next_track()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  next_track failed: {e}", file=sys.stderr)
             return
         elif action == "prev_track":
             try:
                 self.client.previous_track()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  prev_track failed: {e}", file=sys.stderr)
             return
 
         elif action == "quit":
@@ -137,14 +140,14 @@ class SpotifyPoller:
         elif action == "shuffle":
             try:
                 self.client.shuffle()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  shuffle failed: {e}", file=sys.stderr)
             return
         elif action == "repeat":
             try:
                 self.client.set_repeat("context")
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  repeat failed: {e}", file=sys.stderr)
             return
 
         # Style controls
@@ -166,8 +169,8 @@ class SpotifyPoller:
                     self.current_track, art_html, self.bpm,
                     self.renderer.current_style,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  Style re-render failed: {e}", file=sys.stderr)
 
 
 CONFIG_DIR = os.path.expanduser("~/.config/spottt")
@@ -200,7 +203,6 @@ def _load_client_id() -> str:
     result = [None]
 
     def _on_shown(window):
-        val = window.create_file_dialog
         # Use JS prompt via evaluate_js
         js = (
             'prompt('
@@ -241,6 +243,13 @@ def _load_client_id() -> str:
 
 def main(client_id: str = None):
     import webview
+
+    # Hide Python rocket icon from Dock — run as accessory app
+    try:
+        import AppKit
+        AppKit.NSApp.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
+    except Exception:
+        pass
 
     client_id = client_id or _load_client_id()
 

@@ -3,7 +3,9 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;background:#d4d4d4;overflow:hidden;user-select:none;-webkit-user-select:none}
+html{background:#d4d4d4}
+html,body{width:100%;height:100%;overflow:hidden;user-select:none;-webkit-user-select:none}
+body{background:#d4d4d4}
 body{display:flex;justify-content:center;align-items:center}
 button,input{cursor:pointer}
 
@@ -17,9 +19,8 @@ button,input{cursor:pointer}
   transition:all 0.3s ease;
 }
 .player.fullscreen{
-  width:820px;height:306px;border-radius:0;
-  position:fixed;top:50%;left:50%;z-index:999;
-  transform:translate(-50%,-50%);
+  width:100vw;height:100vh;border-radius:0;
+  position:fixed;top:0;left:0;z-index:999;
   background:#000;
   box-shadow:none;
 }
@@ -55,7 +56,7 @@ button,input{cursor:pointer}
   box-shadow:inset 0 2px 8px rgba(0,0,0,0.5);
   transition:margin 0.3s,border-radius 0.3s;
 }
-.fullscreen .visual-area{margin:0;border-radius:0}
+.fullscreen .visual-area{margin:0;border-radius:0;box-shadow:none}
 
 /* Art panel (left square) */
 .art-panel{
@@ -77,7 +78,12 @@ button,input{cursor:pointer}
   display:flex;align-items:center;justify-content:center;
   transition:opacity 0.4s ease;
   padding:6px;
+  font-family:'Menlo','Courier New',monospace;
+  font-size:4.5px;line-height:1.12;
+  color:rgba(255,255,255,0.8);white-space:pre;text-align:center;
+  overflow:hidden;
 }
+.fullscreen .art-layer{font-size:7px;line-height:1.15}
 .art-layer.hidden{opacity:0}
 
 /* Viz panel (right) */
@@ -88,7 +94,7 @@ button,input{cursor:pointer}
 .viz-label{font-family:'Space Mono',monospace;font-size:6px;color:rgba(255,255,255,0.2);letter-spacing:1.5px}
 
 /* Spectrum bars */
-.spectrum{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:flex-end;gap:2px;padding:0 6px 4px}
+.spectrum{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:flex-end;gap:2px;padding:0 0 0 0}
 .bar{
   flex:1;min-width:0;border-radius:1.5px 1.5px 0 0;
   position:relative;
@@ -241,20 +247,24 @@ function fmt(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60);return`${String(
   }
 })();
 
-// Fullscreen toggle — calls pywebview native fullscreen + CSS mode
-function toggleFullscreen(){
-  isFullscreen=!isFullscreen;
-  const p=$('player');
-  // Call backend to toggle native window fullscreen
+// Fullscreen toggle
+function enterFullscreen(){
+  if(isFullscreen) return;
+  isFullscreen=true;
+  $('player').classList.add('fullscreen');
+  document.body.style.background='#000';
+  document.documentElement.style.background='#000';
   fetch(API+'/action/fullscreen',{method:'POST'}).catch(()=>{});
-  if(isFullscreen){
-    p.classList.add('fullscreen');
-    document.body.style.background='#000';
-  }else{
-    p.classList.remove('fullscreen');
-    document.body.style.background='#d4d4d4';
-  }
 }
+function exitFullscreen(){
+  if(!isFullscreen) return;
+  isFullscreen=false;
+  $('player').classList.remove('fullscreen');
+  document.body.style.background='#d4d4d4';
+  document.documentElement.style.background='#d4d4d4';
+  fetch(API+'/action/fullscreen',{method:'POST'}).catch(()=>{});
+}
+function toggleFullscreen(){ isFullscreen ? exitFullscreen() : enterFullscreen(); }
 $('btnFullscreen').onclick=toggleFullscreen;
 
 // Window control dots

@@ -70,8 +70,7 @@ def main():
     if args.logout:
         from spottt.auth import SpotifyAuth
 
-        auth = SpotifyAuth("dummy")
-        auth.logout()
+        SpotifyAuth.clear_tokens()
         print("Logged out. Tokens cleared.")
         return
 

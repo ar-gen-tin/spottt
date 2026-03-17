@@ -3,7 +3,7 @@
 
 pub mod auth;
 pub mod commands;
-pub mod renderer; // kept for potential future use
+pub mod renderer;
 pub mod spotify;
 pub mod state;
 
@@ -11,11 +11,16 @@ use auth::SpotifyAuth;
 use spotify::SpotifyClient;
 use state::{AppState, StatePayload};
 
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 use std::time::Duration;
 use tauri::tray::TrayIconBuilder;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::Manager;
+
+/// Lock a Mutex, recovering from poison if a thread panicked while holding it.
+pub fn safe_lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(|e| e.into_inner())
+}
 
 pub static ACTION_SENDER: OnceLock<Mutex<Option<std::sync::mpsc::Sender<String>>>> =
     OnceLock::new();
@@ -60,7 +65,7 @@ fn spawn_poller(app_state: Arc<AppState>, client_id: String) {
             Ok(_) => eprintln!("  Spotify authenticated"),
             Err(e) => {
                 eprintln!("  Auth failed: {}", e);
-                app_state.state.lock().unwrap().error = Some(format!("Auth failed: {}", e));
+                safe_lock(&app_state.state).error = Some(format!("Auth failed: {}", e));
                 return;
             }
         }
@@ -99,13 +104,13 @@ fn spawn_poller(app_state: Arc<AppState>, client_id: String) {
                         // Download cover image for ASCII art rendering
                         if let Some(ref url) = cover_url {
                             if let Ok(bytes) = client.download_image(url) {
-                                *app_state.image_bytes.lock().unwrap() = Some(bytes);
-                                app_state.renderer.lock().unwrap().clear_cache();
+                                *safe_lock(&app_state.image_bytes) = Some(bytes);
+                                safe_lock(&app_state.renderer).clear_cache();
                             }
                         }
                     }
 
-                    let mut state = app_state.state.lock().unwrap();
+                    let mut state = safe_lock(&app_state.state);
                     state.track_id = Some(track.track_id.clone());
                     state.name = track.name.clone();
                     state.artist = track.artist_display();
@@ -119,13 +124,13 @@ fn spawn_poller(app_state: Arc<AppState>, client_id: String) {
                 }
                 Ok(None) => {
                     consecutive_failures = 0;
-                    *app_state.state.lock().unwrap() = StatePayload::default();
+                    *safe_lock(&app_state.state) = StatePayload::default();
                 }
                 Err(e) => {
                     consecutive_failures += 1;
                     eprintln!("  Poll error ({}): {}", consecutive_failures, e);
                     if consecutive_failures >= 3 {
-                        app_state.state.lock().unwrap().error = Some("Connection lost".into());
+                        safe_lock(&app_state.state).error = Some("Connection lost".into());
                     }
                 }
             }
@@ -138,7 +143,7 @@ fn spawn_poller(app_state: Arc<AppState>, client_id: String) {
 fn handle_action(action: &str, client: &SpotifyClient, app_state: &AppState) {
     match action {
         "play_pause" => {
-            let is_playing = app_state.state.lock().unwrap().is_playing;
+            let is_playing = safe_lock(&app_state.state).is_playing;
             if is_playing {
                 let _ = client.put_action("/me/player/pause");
             } else {

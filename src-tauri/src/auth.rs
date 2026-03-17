@@ -40,7 +40,7 @@ fn token_file() -> PathBuf {
 fn now_secs() -> f64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_default()
         .as_secs_f64()
 }
 
@@ -79,7 +79,7 @@ impl SpotifyAuth {
     }
 
     pub fn get_token(&self) -> Result<String, String> {
-        let tokens = self.tokens.lock().unwrap().clone();
+        let tokens = self.tokens.lock().unwrap_or_else(|e| e.into_inner()).clone();
 
         // Valid token?
         if let Some(ref at) = tokens.access_token {
@@ -101,7 +101,7 @@ impl SpotifyAuth {
     }
 
     pub fn invalidate_access_token(&self) {
-        let mut tokens = self.tokens.lock().unwrap();
+        let mut tokens = self.tokens.lock().unwrap_or_else(|e| e.into_inner());
         tokens.access_token = None;
     }
 
@@ -250,7 +250,7 @@ impl SpotifyAuth {
         let refresh_token = result["refresh_token"].as_str().map(String::from);
         let expires_in = result["expires_in"].as_f64().unwrap_or(3600.0);
 
-        let mut tokens = self.tokens.lock().unwrap();
+        let mut tokens = self.tokens.lock().unwrap_or_else(|e| e.into_inner());
         tokens.access_token = Some(access_token.clone());
         if let Some(rt) = refresh_token {
             tokens.refresh_token = Some(rt);
@@ -290,7 +290,7 @@ impl SpotifyAuth {
         let new_refresh = result["refresh_token"].as_str().map(String::from);
         let expires_in = result["expires_in"].as_f64().unwrap_or(3600.0);
 
-        let mut tokens = self.tokens.lock().unwrap();
+        let mut tokens = self.tokens.lock().unwrap_or_else(|e| e.into_inner());
         tokens.access_token = Some(access_token.clone());
         if let Some(rt) = new_refresh {
             tokens.refresh_token = Some(rt);

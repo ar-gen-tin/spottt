@@ -175,6 +175,13 @@ let currentCoverUrl = null;
 const ART_MODES = ['photo','braille','block','classic','edge','particles','retro-art','terminal'];
 let artMode = 0;
 let artCache = {}; // cache per style to avoid re-fetching
+const ART_CACHE_MAX = 20;
+
+function artCachePut(key, value) {
+  const keys = Object.keys(artCache);
+  if (keys.length >= ART_CACHE_MAX) { delete artCache[keys[0]]; }
+  artCache[key] = value;
+}
 
 async function nextArt() {
   artMode = (artMode + 1) % ART_MODES.length;
@@ -219,7 +226,7 @@ async function applyCoverArt() {
   try {
     const result = await invoke('get_cover_art', { style: mode });
     if (result.html) {
-      artCache[cacheKey] = result.html;
+      artCachePut(cacheKey, result.html);
       setCoverAscii(mode, result.html);
     }
   } catch (e) {

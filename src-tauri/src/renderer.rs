@@ -204,6 +204,7 @@ fn atkinson_dither(brightness: &mut Vec<Vec<f64>>, levels: usize, strength: f64)
             let new = (old / step).round() * step;
             let new = new.clamp(0.0, 255.0);
             brightness[y][x] = new;
+            // Atkinson: 1/8 error to each of 6 neighbors (6/8 total, scaled by strength)
             let error = (old - new) * strength / 8.0;
 
             if x + 1 < cols {
@@ -277,6 +278,7 @@ fn chars_colors_to_html(
                 '>' => html.push_str("&gt;"),
                 '&' => html.push_str("&amp;"),
                 '"' => html.push_str("&quot;"),
+                '\'' => html.push_str("&#39;"),
                 _ => html.push(ch),
             }
         }

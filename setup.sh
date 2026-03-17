@@ -17,9 +17,17 @@ echo "Installing dependencies..."
 "$VENV_DIR/bin/pip" install --quiet --upgrade pip
 "$VENV_DIR/bin/pip" install --quiet -r "$SCRIPT_DIR/requirements.txt"
 
-# Also ensure ascii-art deps are available
-if [ -f "$SCRIPT_DIR/ascii-art/scripts/requirements.txt" ]; then
-    "$VENV_DIR/bin/pip" install --quiet -r "$SCRIPT_DIR/ascii-art/scripts/requirements.txt" 2>/dev/null || true
+# ascii-art library is required for terminal mode rendering
+if [ ! -d "$SCRIPT_DIR/ascii-art/scripts" ]; then
+    echo ""
+    echo "WARNING: ascii-art/ directory not found."
+    echo "  Terminal mode requires the ascii-art library."
+    echo "  Clone it into this directory: git clone <ascii-art-repo> ascii-art/"
+    echo ""
+else
+    if [ -f "$SCRIPT_DIR/ascii-art/scripts/requirements.txt" ]; then
+        "$VENV_DIR/bin/pip" install --quiet -r "$SCRIPT_DIR/ascii-art/scripts/requirements.txt" 2>/dev/null || true
+    fi
 fi
 
 echo ""

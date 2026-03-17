@@ -120,6 +120,7 @@ class SpotttApp:
             leave_alt_screen()
 
     def _handle_input(self):
+        # NOTE: select + termios = macOS/Linux only (no Windows support)
         if not select.select([sys.stdin], [], [], 0)[0]:
             return
 
@@ -162,7 +163,8 @@ class SpotttApp:
                 self.poll_interval = 8.0
                 return
 
-            if self.client.track_changed(track):
+            if self.client.is_new_track(track):
+                self.client.mark_track_seen(track)
                 self.current_track = track
                 self._fetch_and_render_art(track)
                 # Setup rhythm for new track
@@ -178,7 +180,8 @@ class SpotttApp:
                 else:
                     self.poll_interval = 3.0
 
-        except Exception:
+        except Exception as e:
+            print(f"  Poll error: {e}", file=sys.stderr)
             self.poll_interval = 5.0
 
     def _load_rhythm_data(self, track):
@@ -199,8 +202,8 @@ class SpotttApp:
                     segments = analysis.get("segments", [])
                     analysis_tempo = analysis.get("track", {}).get("tempo", tempo)
                     self.rhythm.set_audio_analysis(beats, segments, analysis_tempo)
-            except Exception:
-                pass  # Fall back to simulated rhythm
+            except Exception as e:
+                print(f"  Rhythm data fetch failed: {e}", file=sys.stderr)
 
         # Run in background so it doesn't block rendering
         t = threading.Thread(target=_fetch, daemon=True)
@@ -228,7 +231,8 @@ class SpotttApp:
                 track_id=track.track_id,
             )
             self.current_art = self.renderer.render_with_pulse(self.current_frame, 1.0)
-        except Exception:
+        except Exception as e:
+            print(f"  Art render failed: {e}", file=sys.stderr)
             self.current_art = None
             self.current_frame = None
 
@@ -243,8 +247,8 @@ class SpotttApp:
                 track_id=self.current_track.track_id,
             )
             self.current_art = self.renderer.render_with_pulse(self.current_frame, 1.0)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  Re-render failed: {e}", file=sys.stderr)
 
     def _on_resize(self):
         self.ui.width, self.ui.height = os.get_terminal_size()
