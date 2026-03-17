@@ -11,3 +11,7 @@ desktop.sh
 ascii-art/scripts/.venv/
 ascii-art/.git/
 designs/
+
+src-tauri/target/
+src-tauri/gen/
+node_modules/

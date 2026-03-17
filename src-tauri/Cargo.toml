@@ -1,0 +1,26 @@
+[package]
+name = "spottt"
+version = "0.5.0"
+edition = "2021"
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api", "tray-icon", "image-png"] }
+tauri-plugin-shell = "2"
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+dirs = "5"
+open = "5"
+tiny_http = "0.12"
+sha2 = "0.10"
+base64 = "0.22"
+rand = "0.8"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[lib]
+name = "spottt_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]

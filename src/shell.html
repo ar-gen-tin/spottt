@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>spottt</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#dcdcda;user-select:none;-webkit-user-select:none}
+
+.player{
+  width:820px;height:306px;
+  background:linear-gradient(180deg,#e8e8e6,#dcdcda);
+  border-radius:4px;
+  box-shadow:0 0 0 1px rgba(0,0,0,0.08),0 12px 40px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.8);
+  display:flex;flex-direction:column;overflow:hidden;position:relative;
+}
+
+.top-strip{
+  height:30px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(0,0,0,0.06);flex-shrink:0;cursor:grab;
+}
+.top-strip:active{cursor:grabbing}
+.brand{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;color:#0f0e12;letter-spacing:4px}
+.track-meta{display:flex;gap:16px;align-items:center;flex:1;margin:0 16px;overflow:hidden}
+.track-name{font-family:'Space Mono',monospace;font-size:9px;color:#0f0e12;font-weight:700;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track-artist{font-family:'Space Mono',monospace;font-size:8px;color:#888;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top-right{display:flex;align-items:center;gap:8px}
+.track-time{font-family:'Space Mono',monospace;font-size:10px;color:#0f0e12;font-weight:700;letter-spacing:1px}
+
+.win-knobs{display:flex;gap:5px;align-items:flex-end}
+.win-knob{width:14px;height:14px;border-radius:50%;position:relative;cursor:pointer;border:none;
+  box-shadow:0 1.5px 3px rgba(0,0,0,0.12),inset 0 1px 1px rgba(255,255,255,0.4);transition:transform 0.1s}
+.win-knob:hover{transform:scale(1.1)}
+.win-knob:active{transform:scale(0.95)}
+.win-knob::after{content:'';position:absolute;top:2px;left:50%;width:1px;height:4px;background:rgba(0,0,0,0.2);border-radius:1px;transform:translateX(-50%)}
+.win-knob.hide{background:linear-gradient(145deg,#f5c542,#d4a832)}
+.win-knob.close{background:linear-gradient(145deg,#ec6a5e,#c0453a)}
+.win-knob-label{font-family:'Space Mono',monospace;font-size:3.5px;color:#aaa;text-align:center;margin-top:1px;letter-spacing:0.5px}
+
+.visual-area{flex:1;display:flex;position:relative;overflow:hidden;background:#0a0a0a;margin:6px 8px;border-radius:3px;box-shadow:inset 0 2px 8px rgba(0,0,0,0.5)}
+
+.cover-panel{width:210px;height:100%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  border-right:1px solid rgba(255,255,255,0.04);position:relative;z-index:2;overflow:hidden;background:#000}
+.cover-panel img{width:100%;height:100%;object-fit:cover}
+.cover-placeholder{font-family:'Space Mono',monospace;font-size:9px;color:rgba(255,255,255,0.15);letter-spacing:2px}
+.cover-ascii{font-family:'Menlo','Courier New',monospace;font-size:4.5px;line-height:1.1;white-space:pre;padding:4px;overflow:hidden}
+.art-mode-label{position:absolute;top:4px;left:6px;font-family:'Space Mono',monospace;font-size:5px;color:rgba(255,255,255,0.25);letter-spacing:1px;z-index:3}
+
+.viz-panel{flex:1;position:relative;overflow:hidden}
+.viz-canvas{position:absolute;inset:0;width:100%;height:100%}
+.viz-labels{position:absolute;top:6px;left:8px;right:8px;display:flex;justify-content:space-between;z-index:2}
+.viz-label{font-family:'Space Mono',monospace;font-size:6px;color:rgba(255,255,255,0.2);letter-spacing:1.5px}
+
+.bottom-strip{height:40px;padding:0 12px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.te-knob{width:22px;height:22px;border-radius:50%;position:relative;cursor:pointer;
+  box-shadow:0 2px 4px rgba(0,0,0,0.1),inset 0 1px 2px rgba(255,255,255,0.4)}
+.te-knob::after{content:'';position:absolute;top:3px;left:50%;width:1.5px;height:6px;background:rgba(0,0,0,0.3);border-radius:1px;transform:translateX(-50%) rotate(var(--r,0deg))}
+.te-knob.o{background:linear-gradient(145deg,#ff8c42,#e06820);--r:45deg}
+.te-knob.g{background:linear-gradient(145deg,#4ac085,#2a8a5a);--r:-30deg}
+.te-knob.b{background:linear-gradient(145deg,#4a90d9,#2a6ab8);--r:60deg}
+.te-knob.w{background:linear-gradient(145deg,#f0f0ee,#d8d8d6);--r:-15deg}
+.knob-label{font-family:'Space Mono',monospace;font-size:4.5px;color:#999;text-align:center;margin-top:1px;letter-spacing:0.5px}
+.te-sep{width:1px;height:18px;background:rgba(0,0,0,0.06);margin:0 2px}
+.te-btn{height:22px;padding:0 8px;border-radius:2px;border:none;cursor:pointer;background:rgba(0,0,0,0.04);
+  font-family:'Space Mono',monospace;font-size:7px;font-weight:700;color:#888;transition:all 0.15s}
+.te-btn:hover{background:rgba(0,0,0,0.08);color:#0f0e12}
+.te-btn.active{background:#0f0e12;color:#fff}
+.progress-wrap{flex:1;margin:0 8px;display:flex;flex-direction:column;gap:2px}
+.progress{height:2px;background:rgba(0,0,0,0.06);border-radius:1px;position:relative}
+.progress-fill{height:100%;width:0%;background:#ff8c42;border-radius:1px;transition:width 0.3s linear}
+.progress-dot{position:absolute;top:-3px;left:0%;width:8px;height:8px;border-radius:50%;background:#ff8c42;box-shadow:0 1px 3px rgba(255,140,66,0.3);transform:translateX(-50%);transition:left 0.3s linear}
+.progress-times{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:6px;color:#aaa}
+.te-icon-btn{width:22px;height:22px;border-radius:2px;border:1px solid rgba(0,0,0,0.08);background:transparent;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:9px;color:#888;transition:all 0.15s}
+.te-icon-btn:hover{color:#ff8c42;border-color:#ff8c42}
+.te-model{position:absolute;bottom:3px;right:12px;font-family:'Space Mono',monospace;font-size:4.5px;color:#bbb;letter-spacing:2px;z-index:5}
+
+/* ── Fullscreen: cover stays 210px, band centered vertically ── */
+body.fullscreen{background:#000}
+body.fullscreen .player{
+  width:100vw;height:100vh;background:#000;border-radius:0;box-shadow:none;
+  justify-content:center; /* center the visual-area band vertically */
+}
+body.fullscreen .top-strip,
+body.fullscreen .bottom-strip,
+body.fullscreen .te-model{display:none}
+body.fullscreen .visual-area{
+  margin:0;border-radius:0;box-shadow:none;
+  flex:none; /* don't stretch — keep fixed height */
+  height:224px; /* same as normal mode OLED height */
+  width:100%;
+}
+body.fullscreen .cover-panel{
+  width:224px; /* square, same as band height */
+  height:224px;
+}
+</style>
+</head>
+<body>
+
+<div class="player">
+  <div class="te-model">SP-V2 TE</div>
+
+  <div class="top-strip" id="dragBar">
+    <span class="brand">SPOTTT</span>
+    <div class="track-meta">
+      <span class="track-name" id="trackName">WAITING FOR SPOTIFY</span>
+      <span class="track-artist" id="trackArtist"></span>
+    </div>
+    <div class="top-right">
+      <span class="track-time" id="trackTime">00:00</span>
+      <div class="win-knobs">
+        <div><button class="win-knob hide" id="btnMinimize" title="Hide to menubar"></button><div class="win-knob-label">MIN</div></div>
+        <div><button class="win-knob close" id="btnClose" title="Quit"></button><div class="win-knob-label">OFF</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="visual-area">
+    <div class="cover-panel" id="coverPanel">
+      <div class="art-mode-label" id="artModeLabel"></div>
+      <span class="cover-placeholder">NO COVER</span>
+    </div>
+    <div class="viz-panel">
+      <div class="viz-labels">
+        <span class="viz-label" id="bpmLabel">120 BPM</span>
+        <span class="viz-label" id="vizLabel">SPECTRUM</span>
+      </div>
+      <canvas class="viz-canvas" id="vizCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="bottom-strip">
+    <div style="display:flex;gap:5px;align-items:flex-end">
+      <div><div class="te-knob o" id="knobVol"></div><div class="knob-label">VOL</div></div>
+      <div><div class="te-knob g" id="knobArt"></div><div class="knob-label">ART</div></div>
+      <div><div class="te-knob b" id="knobViz"></div><div class="knob-label">VIZ</div></div>
+      <div><div class="te-knob w" id="knobFx"></div><div class="knob-label">FX</div></div>
+    </div>
+    <div class="te-sep"></div>
+    <button class="te-btn" id="btnShuffle">&#8652;</button>
+    <button class="te-btn" id="btnPrev">|&#9665;&#9665;</button>
+    <button class="te-btn" id="btnPlay">&#9654;</button>
+    <button class="te-btn" id="btnNext">&#9655;&#9655;|</button>
+    <button class="te-btn" id="btnRepeat">&#8635;</button>
+    <div class="progress-wrap">
+      <div class="progress"><div class="progress-fill" id="progressFill"></div><div class="progress-dot" id="progressDot"></div></div>
+      <div class="progress-times"><span id="timePos">00:00</span><span id="timeDur">00:00</span></div>
+    </div>
+    <div class="te-sep"></div>
+    <button class="te-icon-btn" id="btnFullscreen">&#9974;</button>
+  </div>
+</div>
+
+<script>
+const { invoke } = window.__TAURI__.core;
+const { getCurrentWindow } = window.__TAURI__.window;
+const appWindow = getCurrentWindow();
+
+const coverPanel = document.getElementById('coverPanel');
+const trackName = document.getElementById('trackName');
+const trackArtist = document.getElementById('trackArtist');
+const trackTime = document.getElementById('trackTime');
+const progressFill = document.getElementById('progressFill');
+const progressDot = document.getElementById('progressDot');
+const timePos = document.getElementById('timePos');
+const timeDur = document.getElementById('timeDur');
+const btnPlay = document.getElementById('btnPlay');
+const bpmLabel = document.getElementById('bpmLabel');
+const vizLabelEl = document.getElementById('vizLabel');
+const artModeLabel = document.getElementById('artModeLabel');
+
+let currentTrackId = null;
+let currentCoverUrl = null;
+
+// ── ART MODE (cover rendering) ──
+const ART_MODES = ['photo','braille','block','classic','edge','particles','retro-art','terminal'];
+let artMode = 0;
+let artCache = {}; // cache per style to avoid re-fetching
+
+async function nextArt() {
+  artMode = (artMode + 1) % ART_MODES.length;
+  await applyCoverArt();
+}
+
+function setCoverPhoto() {
+  const label = document.createElement('div');
+  label.className = 'art-mode-label';
+  const img = document.createElement('img');
+  img.alt = 'cover';
+  if (currentCoverUrl) img.src = currentCoverUrl;
+  coverPanel.replaceChildren(label, img);
+}
+
+function setCoverAscii(mode, html) {
+  const label = document.createElement('div');
+  label.className = 'art-mode-label';
+  label.textContent = mode.toUpperCase();
+  const art = document.createElement('div');
+  art.className = 'cover-ascii';
+  art.innerHTML = html; // HTML-escaped by Rust renderer
+  coverPanel.replaceChildren(label, art);
+}
+
+async function applyCoverArt() {
+  const mode = ART_MODES[artMode];
+
+  if (mode === 'photo') {
+    setCoverPhoto();
+    return;
+  }
+
+  // ASCII art mode — check cache first
+  const cacheKey = currentTrackId + ':' + mode;
+  if (artCache[cacheKey]) {
+    setCoverAscii(mode, artCache[cacheKey]);
+    return;
+  }
+
+  // Fetch from backend
+  try {
+    const result = await invoke('get_cover_art', { style: mode });
+    if (result.html) {
+      artCache[cacheKey] = result.html;
+      setCoverAscii(mode, result.html);
+    }
+  } catch (e) {
+    setCoverPhoto();
+  }
+}
+let isFullscreen = false;
+let currentBpm = 120;
+let lastProgressMs = 0;
+let lastDurationMs = 0;
+let lastPollTime = 0;
+let isPlaying = false;
+
+// ── DRAG ──
+document.getElementById('dragBar').addEventListener('mousedown', (e) => {
+  if (e.target.closest('button') || e.target.closest('.win-knobs')) return;
+  e.preventDefault();
+  appWindow.startDragging();
+});
+
+// ── WINDOW CONTROLS ──
+document.getElementById('btnMinimize').addEventListener('mousedown', (e) => e.stopPropagation());
+document.getElementById('btnMinimize').addEventListener('click', (e) => { e.stopPropagation(); appWindow.hide(); });
+document.getElementById('btnClose').addEventListener('mousedown', (e) => e.stopPropagation());
+document.getElementById('btnClose').addEventListener('click', (e) => { e.stopPropagation(); appWindow.destroy(); });
+
+// ══════════════════════════════════════════
+// CANVAS VISUALIZER — 5 MODES
+// ══════════════════════════════════════════
+const canvas = document.getElementById('vizCanvas');
+const ctx = canvas.getContext('2d');
+const N = 64;
+const barH = new Float32Array(N);
+const barT = new Float32Array(N);
+const barV = new Float32Array(N);
+const barBias = new Float32Array(N);
+for (let i = 0; i < N; i++) barBias[i] = 1.0 - (i / N) * 0.6;
+
+const particles = [];
+const MAX_PARTICLES = 200;
+const VIZ_MODES = ['spectrum', 'waveform', 'circular', 'particles', 'matrix'];
+let vizMode = 0;
+let lastBeatTime = 0;
+let beatInterval = 500;
+let vizPlaying = false;
+
+function syncBpm(bpm) {
+  if (Math.abs(bpm - currentBpm) < 2) return;
+  currentBpm = bpm;
+  beatInterval = 60000 / bpm;
+}
+
+function nextViz() {
+  vizMode = (vizMode + 1) % VIZ_MODES.length;
+  vizLabelEl.textContent = VIZ_MODES[vizMode].toUpperCase();
+}
+
+function resizeCanvas() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  if (r.width === 0 || r.height === 0) return;
+  canvas.width = r.width * devicePixelRatio;
+  canvas.height = r.height * devicePixelRatio;
+}
+resizeCanvas();
+window.addEventListener('resize', () => { setTimeout(resizeCanvas, 100); });
+
+function triggerBeat() {
+  for (let i = 0; i < N; i++) {
+    barT[i] = Math.min(1.0, (0.4 + Math.random() * 0.6) * barBias[i] + Math.random() * 0.3);
+  }
+  for (let j = 0; j < 8; j++) {
+    if (particles.length < MAX_PARTICLES) {
+      particles.push({ x: Math.random(), y: 0.5 + (Math.random() - 0.5) * 0.3,
+        vx: (Math.random() - 0.5) * 0.01, vy: -0.005 - Math.random() * 0.01,
+        life: 1.0, size: 1 + Math.random() * 2 });
+    }
+  }
+}
+
+function updatePhysics(now) {
+  if (vizPlaying && now - lastBeatTime >= beatInterval) { lastBeatTime = now; triggerBeat(); }
+  if (!vizPlaying) { for (let i = 0; i < N; i++) barT[i] = 0.05 + 0.08 * Math.sin(now * 0.001 + i * 0.3); }
+  for (let i = 0; i < N; i++) {
+    const diff = barT[i] - barH[i];
+    barV[i] += diff > 0 ? diff * 0.4 : -(0.008 + 0.004 * (1 - barBias[i]));
+    barV[i] *= 0.85;
+    barH[i] = Math.max(0.01, Math.min(1.0, barH[i] + barV[i]));
+    barT[i] *= 0.92;
+  }
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.0002; p.life -= 0.012;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+// ── RENDER LOOP ──
+function render(now) {
+  const dpr = devicePixelRatio;
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
+  if (w <= 0 || h <= 0) { requestAnimationFrame(render); return; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  updatePhysics(now);
+  switch (VIZ_MODES[vizMode]) {
+    case 'spectrum': drawSpectrum(w, h); break;
+    case 'waveform': drawWaveform(w, h, now); break;
+    case 'circular': drawCircular(w, h, now); break;
+    case 'particles': drawParticles(w, h, now); break;
+    case 'matrix': drawMatrix(w, h, now); break;
+  }
+  requestAnimationFrame(render);
+}
+// ★ START THE RENDER LOOP
+requestAnimationFrame(render);
+
+function drawSpectrum(w, h) {
+  const pad = 8, gap = 2, bw = (w - pad * 2 - gap * (N - 1)) / N;
+  for (let i = 0; i < N; i++) {
+    const x = pad + i * (bw + gap), bHt = barH[i] * (h - 6), y = h - 6 - bHt;
+    const a = 0.15 + barH[i] * 0.55;
+    const grad = ctx.createLinearGradient(x, y, x, h - 6);
+    grad.addColorStop(0, `rgba(255,255,255,${Math.min(0.9, a + 0.2)})`);
+    grad.addColorStop(1, `rgba(255,255,255,${a * 0.3})`);
+    ctx.fillStyle = grad;
+    const r = Math.min(1.5, bw / 2);
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + bw - r, y);
+    ctx.quadraticCurveTo(x + bw, y, x + bw, y + r); ctx.lineTo(x + bw, h - 6);
+    ctx.lineTo(x, h - 6); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${0.2 + barH[i] * 0.3})`; ctx.fillRect(x, y, bw, Math.min(2, bHt));
+  }
+}
+function drawWaveform(w, h, now) {
+  const cy = h / 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let i = 0; i < N; i++) { const x = (i/(N-1))*w, amp = barH[i]*h*0.4, y = cy + Math.sin(now*0.003+i*0.15)*amp*(i%2===0?1:-1); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.beginPath();
+  for (let i = 0; i < N; i++) { const x = (i/(N-1))*w, amp = barH[i]*h*0.35, y = cy - Math.sin(now*0.003+i*0.15)*amp*(i%2===0?1:-1); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(w,cy); ctx.stroke();
+}
+function drawCircular(w, h, now) {
+  const cx = w/2, cy = h/2, baseR = Math.min(w,h)*0.25;
+  for (let i = 0; i < N; i++) { const angle = (i/N)*Math.PI*2-Math.PI/2, r2 = baseR+barH[i]*baseR*1.2; ctx.strokeStyle = `rgba(255,255,255,${0.2+barH[i]*0.6})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx+Math.cos(angle)*baseR,cy+Math.sin(angle)*baseR); ctx.lineTo(cx+Math.cos(angle)*r2,cy+Math.sin(angle)*r2); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx,cy,baseR*(0.8+barH[0]*0.4),0,Math.PI*2); ctx.stroke();
+  const da = now*0.002; ctx.fillStyle = 'rgba(255,140,66,0.8)'; ctx.beginPath(); ctx.arc(cx+Math.cos(da)*baseR*0.5,cy+Math.sin(da)*baseR*0.5,2,0,Math.PI*2); ctx.fill();
+}
+function drawParticles(w, h) {
+  for (let i = 0; i < N; i++) { ctx.fillStyle = `rgba(255,255,255,${barH[i]*0.08})`; ctx.fillRect((i/N)*w,0,w/N-1,h); }
+  for (const p of particles) { ctx.fillStyle = `rgba(255,${Math.floor(140+p.life*115)},${Math.floor(66+p.life*50)},${p.life*0.8})`; ctx.beginPath(); ctx.arc(p.x*w,p.y*h,p.size*p.life,0,Math.PI*2); ctx.fill(); }
+  for (let i = 0; i < N; i++) { if (barH[i]>0.3&&Math.random()<barH[i]*0.3) { ctx.fillStyle = `rgba(255,255,255,${barH[i]*0.4})`; ctx.beginPath(); ctx.arc((i/N)*w+Math.random()*(w/N),h-barH[i]*h*Math.random(),0.5+Math.random(),0,Math.PI*2); ctx.fill(); } }
+}
+const matrixCols = [];
+function drawMatrix(w, h) {
+  const colW = 8, rows = Math.floor(h/10), cols = Math.floor(w/colW);
+  while (matrixCols.length < cols) matrixCols.push({y:Math.random()*rows,speed:0.5+Math.random()});
+  ctx.font = '8px monospace';
+  for (let c = 0; c < cols; c++) { const col = matrixCols[c], energy = barH[Math.floor((c/cols)*N)]; col.y += col.speed*(0.3+energy*2); if (col.y>rows+5) col.y=-Math.random()*5;
+    for (let r = 0; r < rows; r++) { const dist = col.y-r; if (dist<0||dist>8) continue; const fade = 1-dist/8, a = fade*(0.3+energy*0.6); ctx.fillStyle = dist<1?`rgba(255,255,255,${a})`:`rgba(255,140,66,${a*0.6})`; ctx.fillText(String.fromCharCode(0x30A0+Math.floor(Math.random()*96)),c*colW+1,r*10+9); } }
+}
+
+function formatTime(ms) { const s = Math.floor(ms/1000); return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+
+// ── SMOOTH PROGRESS ──
+function updateProgress() {
+  if (isPlaying && lastDurationMs > 0) {
+    const current = Math.min(lastProgressMs + (Date.now() - lastPollTime), lastDurationMs);
+    const ratio = (current / lastDurationMs) * 100;
+    progressFill.style.width = ratio + '%'; progressDot.style.left = ratio + '%'; timePos.textContent = formatTime(current);
+  }
+  requestAnimationFrame(updateProgress);
+}
+requestAnimationFrame(updateProgress);
+
+// ── POLL ──
+async function poll() {
+  try {
+    const data = await invoke('get_state');
+    if (!data.track_id) {
+      trackName.textContent = 'WAITING FOR SPOTIFY'; trackArtist.textContent = ''; trackTime.textContent = '00:00';
+      lastProgressMs = 0; lastDurationMs = 0; isPlaying = false; vizPlaying = false;
+      progressFill.style.width = '0%'; progressDot.style.left = '0%'; timePos.textContent = '00:00'; timeDur.textContent = '00:00';
+      coverPanel.innerHTML = '<span class="cover-placeholder">NO COVER</span>';
+      currentTrackId = null; currentCoverUrl = null;
+      btnPlay.classList.remove('active'); btnPlay.innerHTML = '&#9654;';
+      return;
+    }
+    trackName.textContent = data.name || ''; trackArtist.textContent = data.artist || '';
+    trackTime.textContent = formatTime(data.progress_ms); timeDur.textContent = formatTime(data.duration_ms);
+    lastProgressMs = data.progress_ms; lastDurationMs = data.duration_ms; lastPollTime = Date.now();
+    isPlaying = data.is_playing; vizPlaying = data.is_playing;
+    if (data.is_playing) { btnPlay.classList.add('active'); btnPlay.innerHTML = '&#9646;&#9646;'; }
+    else { btnPlay.classList.remove('active'); btnPlay.innerHTML = '&#9654;'; }
+    syncBpm(data.bpm || 120); bpmLabel.textContent = Math.round(data.bpm || 120) + ' BPM';
+    if (data.cover_url && data.cover_url !== currentCoverUrl) {
+      currentCoverUrl = data.cover_url;
+      artCache = {}; // clear cache on track change
+      applyCoverArt();
+    }
+    currentTrackId = data.track_id;
+    if (data.error) { trackName.textContent = data.error; trackName.style.color = '#c0392b'; }
+    else { trackName.style.color = ''; }
+  } catch (e) {}
+}
+
+async function doAction(action) { try { await invoke('do_action', { action }); } catch (e) {} }
+
+// ── FULLSCREEN — sync state with native window ──
+async function setFullscreen(on) {
+  isFullscreen = on;
+  document.body.classList.toggle('fullscreen', on);
+  await appWindow.setFullscreen(on);
+  setTimeout(resizeCanvas, 200);
+}
+
+// Listen for native fullscreen changes (macOS green button, ESC key)
+appWindow.onResized(() => {
+  appWindow.isFullscreen().then((fs) => {
+    if (fs !== isFullscreen) {
+      isFullscreen = fs;
+      document.body.classList.toggle('fullscreen', fs);
+      setTimeout(resizeCanvas, 100);
+    }
+  });
+});
+
+// ── BUTTONS ──
+document.getElementById('knobArt').addEventListener('click', nextArt);
+document.getElementById('knobViz').addEventListener('click', nextViz);
+document.getElementById('btnShuffle').addEventListener('click', () => doAction('shuffle'));
+document.getElementById('btnPrev').addEventListener('click', () => doAction('prev_track'));
+document.getElementById('btnPlay').addEventListener('click', () => doAction('play_pause'));
+document.getElementById('btnNext').addEventListener('click', () => doAction('next_track'));
+document.getElementById('btnRepeat').addEventListener('click', () => doAction('repeat'));
+document.getElementById('btnFullscreen').addEventListener('click', () => setFullscreen(!isFullscreen));
+
+// ── KEYBOARD ──
+document.addEventListener('keydown', (e) => {
+  switch (e.key) {
+    case ' ': doAction('play_pause'); e.preventDefault(); break;
+    case 'a': case 'A': nextArt(); break;
+    case 'k': case 'K': nextViz(); break;
+    case 'ArrowRight': doAction('next_track'); break;
+    case 'ArrowLeft': doAction('prev_track'); break;
+    case 'f': case 'F': setFullscreen(!isFullscreen); break;
+    case 'Escape': if (isFullscreen) setFullscreen(false); break;
+    case 'q': case 'Q': if (e.metaKey) appWindow.destroy(); break;
+  }
+});
+
+setInterval(poll, 2000);
+poll();
+</script>
+</body></html>
